@@ -1,0 +1,16 @@
+# This is a dummy file for taxonomy coloring
+# R	G	B	Taxon name
+# Bacteria
+0	255	255	Verrucomicrobia
+128	0	0	Deinococcus-Thermus
+0	0	0	Proteobacteria
+# Eukaryotes
+55	200	55	Viridiplantae
+255	102	0	Metazoa
+200	113	55	Fungi
+# This is for unknown and viruses
+204	170	255	Unknown
+255	204	170	Eukaryota
+204	204	204	Bacteria
+255	170	170	Archaea
+153	85	255	Viruses

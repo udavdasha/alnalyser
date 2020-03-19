@@ -1,0 +1,9 @@
+CJA_2784	Bacteria	Proteobacteria
+S58_55710	Bacteria	Proteobacteria
+TERTU_3677	Bacteria	Proteobacteria
+Desti_1891	Bacteria	Proteobacteria
+TTHA1930	Bacteria	Deinococcus-Thermus
+Oter_3544	Bacteria	Verrucomicrobia
+Hoch_3893	Bacteria	Proteobacteria
+CYB_YEAST	Eukaryota	Fungi
+CYB_HUMAN	Eukaryota	Metazoa
