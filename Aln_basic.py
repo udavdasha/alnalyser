@@ -4,6 +4,26 @@ import codecs
 import Tkinter as tkinter
 import tkMessageBox, tkFont
 
+def exists(setting_object, setting_name, method_to_check_existence, object_name, addition_to_path = ""):
+    """
+    This method checks if object at <setting_object>.<setting_name> exists with the 
+    <method_to_check_existence> (should return True or False), prints data about this and returns
+    an answer
+
+    If <addition_to_path> is not empty, it will be added to the path specified in <setting_object>.<setting_name>
+    with os.path.join() method 
+    """
+    answer = True
+    try:
+        object_path = os.path.join(getattr(setting_object, setting_name), addition_to_path).strip("\/\\")
+        if not method_to_check_existence(object_path): 
+            print ("[FATAL ERROR] %s '%s' does not exist, make sure setting is correct!" % (object_name, object_path))
+            answer = False
+    except AttributeError:
+        print ("[FATAL ERROR] Setting '%s' is missing from the settings file, please set it!" % setting_name)
+        answer = False
+    return answer
+
 def write_widget_into_file(text_widget, filename, ask_if_exists = False, use_codecs = False):
     """
     Method returns True if the were was written correctly and False if some errors occured

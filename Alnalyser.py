@@ -3,7 +3,7 @@
 This is a main script of the <Alnalyser> program
 @ Daria Dibrova aka udavdasha
 """
-curr_version = "1.0.0"
+curr_version = "1.0.1"
 import Tkinter as tkinter
 import tkMessageBox, tkFileDialog
 import ttk
@@ -38,6 +38,7 @@ class Alnalyser(tkinter.Frame):
         random.seed()
         self.temp_name = "udav_temp_%i" % (random.random() * 1000)
         self.settings = Settings.read_settings_file(settings_filename, req_settings)
+        self.check_settings() #FIX (version 1.0.1): existence of required settings is now checked
         sys.path.append(self.settings.script_dir)
 
         self.check_button = None         # Button for checking of pending results
@@ -316,6 +317,32 @@ class Alnalyser(tkinter.Frame):
 
         del udav_base
         self.set_status("Ready")
+
+    def check_settings(self):
+        """
+        This method checks if all required settings are correctly set. That is:
+        1) there should be settings for work_dir, hmmer_dir, muscle_dir, script_dir, pfam_profiles 
+           and cog_profiles attributes of <self.settings>;
+        2) directories <self.settings.work_dir> and <self.settings.script_dir> must exist, files 
+           <self.settings.pfam_profiles> and <self.settings.cog_profiles> must exist;
+        3) programs 'muscle' and 'hmmbuild', 'hmmpress', 'hmmscan' must exist in respective directories.
+        """
+        results = list()
+        results.append(Aln_basic.exists(self.settings, "muscle_dir", os.path.isdir, "Muscle directory"))
+        results.append(Aln_basic.exists(self.settings, "hmmer_dir", os.path.isdir, "HMMer directory"))
+        results.append(Aln_basic.exists(self.settings, "work_dir", os.path.isdir, "Working directory"))
+        results.append(Aln_basic.exists(self.settings, "cog_profiles", os.path.isfile, "Database of COG profiles"))
+        results.append(Aln_basic.exists(self.settings, "pfam_profiles", os.path.isfile, "Database of Pfam profiles"))
+        extension = ""
+        if platform.system() == "Windows":
+            extension = ".exe"
+        results.append(Aln_basic.exists(self.settings, "muscle_dir", os.path.isfile, "Muscle program", "muscle" + extension))
+        results.append(Aln_basic.exists(self.settings, "hmmer_dir", os.path.isfile, "HMMbuild program", "hmmbuild" + extension))
+        results.append(Aln_basic.exists(self.settings, "hmmer_dir", os.path.isfile, "HMMpress program", "hmmpress" + extension))
+        results.append(Aln_basic.exists(self.settings, "hmmer_dir", os.path.isfile, "HMMscan program", "hmmscan" + extension))
+
+        if False in results:
+            sys.exit()
 
     def diagnostics(self):
         self.log_tab.get_current_project_state()

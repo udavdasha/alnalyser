@@ -5,7 +5,7 @@ This is used in <COGalyser> and <Alnalyser> software
 Module version: 1.1
 """
 
-import os, platform
+import sys, os, platform
 
 def get_program_name(directory, name):
     """
@@ -71,6 +71,9 @@ def read_settings_file (filename, req_attributes, not_path_attr = dict()):
                 set[fields[0]] = os.path.abspath(fields[1])
         settings_file.close()
     except:
-        print ("\nSettings file '%s' does not exist, consider creating one for %s!" % (filename, platform.system()))
+        print ("")
+        print ("[FATAL ERROR] Settings file '%s' does not exist, consider creating one for %s!" % (filename, platform.system()))
+        print ("              If your settings file has another name, pass it to Alnalyser as an argument")
+        sys.exit() #FIX (version 1.0.1): if no settings file presents, further work is impossible
     settings_object = Settings(set, req_attributes)
     return settings_object

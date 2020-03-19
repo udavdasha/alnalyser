@@ -74,11 +74,9 @@ class AlnParse(tkinter.Frame):
         self.ID_save_mode.set("No change")
         ID_save_mode = tkinter.OptionMenu(self.IDs.panel, self.ID_save_mode, "No change", "  -> gi  ", "fix gi-gi", "fix & ->") 
         ID_save_mode.grid(row = 0, column = 2, sticky = "NW", padx = self.p, pady = self.p)         
-        try: #FIX: version 1.0 (if no assignment between gi and id/locus was given, conversion options are disabled)
+        try: #FIX: version 1.0.0 (if no assignment between gi and id/locus was given, conversion options are disabled)
             curr_table = self.host.settings.table_filename
-            print (curr_table)
         except AttributeError:
-            print ("HERE!")
             ID_save_mode.configure(state = tkinter.DISABLED)
         
         central_panel.add(self.IDs)
