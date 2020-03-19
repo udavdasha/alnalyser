@@ -1,4 +1,4 @@
-<img src="/alnalyser.gif" alt="The red bug is here!" width="100" height="100">
+<img src="https://github.com/udavdasha/alnalyser/blob/master/images/adv_image.png" alt="Alnalyser preview">
 
 # alnalyser
 **Your helper for a reasonable work with multiple sequence alignments (in bioinformatics)**
