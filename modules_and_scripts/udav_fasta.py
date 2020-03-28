@@ -5,7 +5,7 @@ Currently the following formats are accepted: My_Ref, My (v1.3), Uniprot (v1.4),
                                               NCBI (v.2.4), Olesya (v.2.10), COGcollator (v.2.11),
                                               German (v.2.12)
 Now exceptions are considered: FIX: version 2.12
-------- Version: 2.22
+------- Version: 2.23
 Methods included in this module:
         1) dict unredun_org (input_filename, output_filename)
            a)  Reads <input_filename> which is expected to be *.org file produces with the 
@@ -156,8 +156,9 @@ class Annotated_sequence(Sequence):
                 result = ">%s|%s|%s\n" % (req_id, prot_type, org)
         if format == "Basic":
            result = ">%s %s\n" % (req_id, org)
-        if format == "NCBI":
-           result = ">gi|%s|ref|%s %s [%s]\n" % (self.gi, self.protein_id, self.product, self.organism)            
+        if format == "NCBI": #FIX: version 2.23 (new NCBI format is now used)
+           #result = ">gi|%s|ref|%s %s [%s]\n" % (self.gi, self.protein_id, self.product, self.organism)            
+           result = ">%s %s [%s]\n" % (req_id, self.product, self.organism)            
         if format == "ID":
            result = ">%s\n" % req_id
         if format == "Table":
@@ -361,13 +362,13 @@ def get_sequence_data (string, format):
         result_seq = Annotated_sequence(fields[1], fields[3], "Unk", fields[5], fields[7],
                               -1, -1, 0, "Unk", fields[6], string) 
 
-    if format == "NCBI": #FIX: version 2.4
+    if format == "NCBI_2016-": #FIX: version 2.4 (in version 2.23 name of format is changed to 'NCBI_2016-')
         #>gi|365992322|ref|NP_212397.2| signal peptidase I [Borrelia burgdorferi B31]
         #Now also the following strings, FIX: version 2.7
         #>gi|57116782|ref|NP_215295.2| Probable protease II PtrBb [second part] (oligopeptidase B) [Mycobacterium tuberculosis H37Rv]
         fields = string.split(" ", 1)
         if len(fields) != 2:
-            print "FATAL ERROR: Unexpected file format. Check that 'NCBI' format was used!"
+            print "FATAL ERROR: Unexpected file format. Check that 'NCBI_2016-' (old NCBI) format was used!"
             print "Number of fields: %i" % len(fields)
             print "String = %s" % string                    
             raise FastaException
@@ -381,7 +382,7 @@ def get_sequence_data (string, format):
         result_seq = Annotated_sequence(gi, protein_id, "Unk", product, org, -1, -1, 0, 
                                         "Unk", "Unk", string) 
 
-    if format == "NCBI_2016": #FIX: version 2.16
+    if format == "NCBI": #FIX: version 2.16 (in version 2.23 name of format is changed to simple 'NCBI')
         #>NP_212397.2 signal peptidase I [Borrelia burgdorferi B31]
         fields = string.split(" ", 1)
         if len(fields) != 2:
