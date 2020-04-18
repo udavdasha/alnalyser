@@ -35,3 +35,6 @@ You can run Alnalyser with a settings filename as a single argument. For example
 python Alnalyser.py dummy_settings.ini
 ```
 If the script is opened without any argument, it will try to load settings from the file *settings.ini*.
+
+# Acknowledgements
+Creation of this tool was supported by the Dmitry Zimin's Dynasty Foundation, grant for young biologists, 2014
