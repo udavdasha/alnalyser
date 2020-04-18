@@ -54,9 +54,9 @@ def read_direct_tax_assignment(assign_filename, id_to_taxonomy, short_id_to_taxo
             continue
         fields = string.split("\t", 1)
         if len (fields) < 2:
-            print "WARNING: Error in the taxonomy assignment file!"
-            print string
-            print fields
+            print ("WARNING: Error in the taxonomy assignment file!")
+            print (string)
+            print (fields)
         else:
             id_to_taxonomy[fields[0]] = fields[1].split("\t") # FIX version 3.85
             fields[0] = fields[0].split(".", 1)[0] # FIX version 1.4: protein_ids are operated normally
@@ -67,20 +67,20 @@ def read_direct_tax_assignment(assign_filename, id_to_taxonomy, short_id_to_taxo
     assign_file.close()  
 
 #----------- 1) Tree reading
-print "Reading tree file from .svg picture..."
+print ("Reading tree file from .svg picture...")
 (file_strings, text_tags, path_tags) = udav_tree_svg.read_svg_file(myargs.input_tree)
-print "\tDONE! Found %i text tags" % len(text_tags.keys())
+print ("\tDONE! Found %i text tags" % len(text_tags.keys()))
 
 leaves = 0
 for key in text_tags.keys():
     if text_tags[key].is_leaf():
         leaves += 1
-print "Number of tree leaves: %i" % leaves
+print ("Number of tree leaves: %i" % leaves)
 
 if myargs.gi_to_id_filename != None: #FIX 4.1: another mode (not coloring, but replacing of GIs)
     GI_to_ID = None
     GI_to_locus = None
-    print "Changing type of ID in .svg..."
+    print ("Changing type of ID in .svg...")
     (GI_to_ID, GI_to_locus, gi_dupl, non_unique) = udav_soft.read_protein_table_info(myargs.gi_to_id_filename)
     n = 0
     for key in text_tags.keys():
@@ -92,18 +92,18 @@ if myargs.gi_to_id_filename != None: #FIX 4.1: another mode (not coloring, but r
     udav_tree_svg.print_svg_file(myargs.output + "_replaced.svg", file_strings, text_tags, path_tags, None, None, None, myargs.remove_bootstrap)
 
 if myargs.assign != None: #----------- 1a) Changing text tags (coloring)    
-    print "Reading taxonomy colors..."
+    print ("Reading taxonomy colors...")
     (taxonomy_colors, taxa_order) = udav_tree_svg.read_taxonomy_colors(color_file_path)
     if myargs.legend_draw:
         udav_tree_svg.print_simple_legend(taxonomy_colors, taxa_order, myargs.output + ".tax_legend")
-    print "\tDONE!"
+    print ("\tDONE!")
     id_to_taxonomy = dict()
     short_id_to_taxonomy = dict() #FIX 3.3: considering case of non-complete IDs: not W9Y1V1_9EURO, but W9Y1V1 (Uniprot only)
     if myargs.format != None:
-        print "Reading fasta file with long names..."
+        print ("Reading fasta file with long names...")
         (long_names, l_not_found) = udav_fasta.read_fasta(myargs.assign, None, None, dict(),
                                            100, False, None, None, None, None, myargs.format)
-        print "\tDONE; %i sequences found!" % len(long_names)
+        print ("\tDONE; %i sequences found!" % len(long_names))
         for s in long_names:
             prot_id = s.get_proper_protein_id()            
                 
@@ -115,7 +115,7 @@ if myargs.assign != None: #----------- 1a) Changing text tags (coloring)
             id_to_taxonomy[prot_id.split(".")[0]] = curr_taxonomy
             id_to_taxonomy[s.gi] = curr_taxonomy
     else:
-        print "Reading direct assignment of id to taxonomy (at least domain and phylum depth)..." 
+        print ("Reading direct assignment of id to taxonomy (at least domain and phylum depth)...")
         #FIX: 4.0 <myargs.assign> could be either file or a directory with a number of files
         if os.path.isfile(myargs.assign):
             read_direct_tax_assignment(myargs.assign, id_to_taxonomy, short_id_to_taxonomy)
@@ -142,7 +142,7 @@ if myargs.assign != None: #----------- 1a) Changing text tags (coloring)
         isoforms = udav_fasta.get_isoform_data(myargs.bank_isoform, req_proteins, "GI", "%s.isoforms" % myargs.output)
         print ("DONE; %i proteins assigned to isoform groups" % len(isoforms.keys()))
 
-    print "Changing colors in .svg..."         
+    print ("Changing colors in .svg...")
     n = 0
     m = 0
     for key in text_tags.keys():
@@ -192,7 +192,7 @@ if myargs.assign != None: #----------- 1a) Changing text tags (coloring)
                 #text_tags[key].content = curr_id + " " + seq_long.organism
                 n += 1
             else:
-                print "WARNING: no color found for phylum '%s'!" % phylum  
+                print ("WARNING: no color found for phylum '%s'!" % phylum)
         else:
             if text_tags[key].content.strip() in taxonomy_colors:
                 print ("Found taxonomy name in the file (%s), not changing..." % text_tags[key].content.strip())
@@ -206,8 +206,8 @@ if myargs.assign != None: #----------- 1a) Changing text tags (coloring)
                         text_tags[key].change_font("Arial", 12, True)
                 except:
                     pass                   
-                print "WARNING: no color info found for id '%s'; default color using!" % curr_id
-                print "         Possible cause of error: duplicate IDs in the input file!"
+                print ("WARNING: no color info found for id '%s'; default color using!" % curr_id)
+                print ("         Possible cause of error: duplicate IDs in the input file!")
                 m += 1
 
         if isoforms != None: # Isoform data will be added, if any, to the content
@@ -220,15 +220,15 @@ if myargs.assign != None: #----------- 1a) Changing text tags (coloring)
                text_tags[key].change_font(None, None, True)
            
 
-    print "\tDONE!"
-    print "Made %i replacements (%i missing)" % (n, m)
+    print ("\tDONE!")
+    print ("Made %i replacements (%i missing)" % (n, m))
 
     group = None
     group_color = None
     if myargs.group != None:
         group = udav_soft.read_group_file(myargs.group)
         (group_color, group_list) = udav_soft.read_color_file(myargs.group_color, False)
-        print "Group file red; total %i proteins assigned to some group" % len(group.keys())
+        print ("Group file red; total %i proteins assigned to some group" % len(group.keys()))
         for c in group_color.keys():
             colors = group_color[c].replace("rgb", "").strip("()").split(",")
             group_color[c] = (int(colors[0]), int(colors[1]), int(colors[2]))
@@ -261,13 +261,13 @@ if myargs.input_align == None:
 alignment = None
 id_hash_align = dict()
 if myargs.yes_sample: #FIX: version 4.2
-    print "Sorting sequence sample started..."
+    print ("Sorting sequence sample started...")
     (alignment, found) = udav_fasta.read_fasta (myargs.input_align, None, None, dict(), 10000, False, None, None, None, None, "URef")
     for s in alignment:
         id_hash_align[s.ID] = s
         id_hash_align[s.locus] = s
 else:
-    print "Sorting alignment started..."
+    print ("Sorting alignment started...")
     alignment = udav_base.read_alignment(myargs.input_align, False) # FIX: False = do not recover 'proper' ID!
     for s in alignment:
         #id_hash_align[s.ID.split(".")[0]] = s
@@ -292,10 +292,10 @@ for curr_id in ordered_ids:
             no_match = False
             break
     if no_match: 
-        print "WARNING: Cannot find aligned sequence with id '%s'" % curr_id
+        print ("WARNING: Cannot find aligned sequence with id '%s'" % curr_id)
         sorted_seq.append(udav_base.Sequence(curr_id, "---"))
 
-print "\tDONE!"
+print ("\tDONE!")
 if myargs.more == True:
     unsorted = id_hash_align.keys()
     for curr_id in unsorted:
@@ -312,7 +312,7 @@ if myargs.more == True:
                 best_identity = curr_identity
                 best_i = i
         sorted_seq.insert(best_i, id_hash_align[curr_id])
-    print "Printed %i sorted sequences (and %i unsorted added near the best match)" % (a, len(id_hash_align.keys()))
+    print ("Printed %i sorted sequences (and %i unsorted added near the best match)" % (a, len(id_hash_align.keys())))
 else:
-    print "Printed %i sorted sequences (unsorted were not added)" % len(sorted_seq)    
+    print ("Printed %i sorted sequences (unsorted were not added)" % len(sorted_seq))
 udav_base.print_pure_sequences(sorted_seq, myargs.output + ".tree_sorted", False, False)

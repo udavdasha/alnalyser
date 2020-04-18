@@ -1,6 +1,6 @@
 """
 Module for working with svg (Inkscape) documents considered there are trees there
-------- Version: 1.93
+------- Version: 2.0
         1.5  * Proper class & function documentation added
              * <Path_object_svg> class is added
         1.6  * Recursion cyclisation is prevented in graph
@@ -10,6 +10,7 @@ Module for working with svg (Inkscape) documents considered there are trees ther
         1.91 * Sequences IDs are fixed with '_', if they appear to be like: XP 002951836.1|Volvox...
         1.92 * Now 'My' format can be used to enter additional sequences information in the middle
         1.93 * Group coloring is improved: now multiple groups are allowed
+        2.0  * Not only tree svg, but custom svg should be red correctry
 """
 
 import sys, re, math
@@ -27,8 +28,8 @@ def read_taxonomy_colors(input_filename):
             continue
         fields = string.split("\t")
         if len(fields) != 4:
-            print "FATAL ERROR: Cannot read taxonomy colors, check string '%s'!" % string
-            print fields
+            print ("FATAL ERROR: Cannot read taxonomy colors, check string '%s'!" % string)
+            print (fields)
             sys.exit()
         red   = str( hex(int(fields[0])) ).replace("0x", "")
         if len(red) == 1:
@@ -79,6 +80,7 @@ class Object_svg:
     Typical object in SVG format.
     Contains the following attributes:
     <self.features> - dictionary of keys->values written in the tag
+    <self.tags> - list of tags <Object_svg> inside this tag (e.g. <tspan> inside <text> or <title> inside <path>) #FIX: version 2.0
     <self.content> - content of the tag (if it contains nothing - None)
     <self.tag_type> name of the current tag type (e.g., "text" or "path")    
     """
@@ -88,18 +90,41 @@ class Object_svg:
 #         b="bbb"
 #         z="zzzzzzz"> XXX </smth>
         self.features = dict()
+        self.tags = list()
+        #print (tag_content)
+        open_tags_inside = re.findall("\<[A-Za-z]+", tag_content[1:])               
+        for tag in open_tags_inside: 
+            close_tag = "</%s>" % tag.strip("<")
+            regex = "%s.+%s" % (tag, close_tag)
+            match = re.search(regex, tag_content)
+            try:
+                start = match.start()
+                end = match.start() + len(match.group(0)) - 1
+                this_tag_contents = match.group(0)             
+                tag_content = tag_content[:start] + tag_content[end + 1:]
+                self.tags.append(Object_svg(this_tag_contents))
+            except:
+                print ("Regex: '%s'" % regex)
+                print ("Tag: '%s'" % tag_content)
+        #print ("-----------------------------------")
+           
         fields = re.findall('[^\s]+="[^"]+', tag_content)        
+        #print (tag_content)
         for f in fields:
             pair = f.split('="')
             if len(pair) != 2:
-               print "WARNING: field in SVG object features is weird: %s" % f
+               print ("WARNING: field in SVG object features is weird: %s" % f)
             self.features[pair[0]] = pair[1]
+            #print (pair)
         self.tag_type = re.split("\s", tag_content)[0].strip("<")
         close_tag = "</%s>" % self.tag_type
         self.content = None
         if tag_content.count(close_tag) == 1: # There is a close tag here
-            content_result = re.search('(?<=\>)[^\<]+', tag_content)            
-            self.content = content_result.group(0)
+            content_result = re.search('(?<=\>)[^\<]+', tag_content)
+            if content_result == None:
+                self.content = ""
+            else:
+                self.content = content_result.group(0)                               
 
     def proceed_feature(self, feature_name):
         """
@@ -109,12 +134,13 @@ class Object_svg:
         if feature_name in self.features:
             #style="font-size:12.715518px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#ff0000;font-family:Arial"
             feature_string = self.features[feature_name]
+            feature_string = feature_string.strip(";")
             fields = feature_string.split(";")
             feature = dict()
             for f in fields:
                 prop = f.split(":")
                 if len(prop) != 2:
-                   print "WARNING: feature string %s is weird (%s part)" % (feature_string, f)
+                   print ("WARNING: in object '%s' feature string '%s' is weird ('%s' part)" % (self.features["id"], feature_string, f))
                 feature[prop[0]] = prop[1]
             self.features[feature_name] = feature
 
@@ -137,6 +163,9 @@ class Object_svg:
          text_tag = text_tag.strip(" ")
          if self.content != None: # Requires close tag
              text_tag += ">"
+             for tag in self.tags: # Internal tags (if any) are inside the content FIX: version 2.0
+                 text_tag += tag.create_svg_tag()
+                 
              if self.content.count("|") != 0: # Trying ID fixing FIX: version 1.91
                  parts = self.content.split("|", 1)
                  parts[0] = " " + parts[0].strip().replace(" ", "_")                 
@@ -160,7 +189,7 @@ class Path_object_svg(Object_svg):
 
     def change_line_color(self, new_color):
         if not "style" in self.features:
-            print "Warning: failed to change color of path object %s, no style feature!" % self.features["id"]
+            print ("Warning: failed to change color of path object %s, no style feature!" % self.features["id"])
         else:
             self.features["style"]["stroke"] = new_color
 
@@ -217,17 +246,25 @@ class Path_object_svg(Object_svg):
 
     def get_line_color(self):
         if not "style" in self.features:
-            print "Warning: failed to obtain color of path object %s, no style feature!" % self.features["id"]
+            print ("Warning: failed to obtain color of path object %s, no style feature!" % self.features["id"])
             return None
         else:
             return self.features["style"]["stroke"]
 
     def set_size(self, new_size):
         if not "style" in self.features:
-            print "Warning: failed to set size of stroke of path object %s, no style feature!" % self.features["id"]
+            print ("Warning: failed to set size of stroke of path object %s, no style feature!" % self.features["id"])
             return None
         else:
             self.features["style"]["stroke-width"] = new_size
+
+    def set_fill(self, new_fill):
+        if not "style" in self.features:
+            print ("Warning: failed to set size of stroke of path object %s, no style feature!" % self.features["id"])
+            return None
+        else:
+            self.features["style"]["fill"] = new_fill
+
 
 class Text_object_svg(Object_svg):
     def __init__(self, text_tag_content):
@@ -310,20 +347,25 @@ class Text_object_svg(Object_svg):
 
     def change_text_color(self, new_color):
         if not "style" in self.features:
-            print "Warning: failed to change color of text object %s, no style feature!" % self.features["id"]
+            print ("Warning: failed to change color of text object %s, no style feature!" % self.features["id"])
         else:
             self.features["style"]["fill"] = new_color
 
     def get_text_color(self):
         if not "style" in self.features:
-            print "Warning: failed to obtain color of text object %s, no style feature!" % self.features["id"]
+            print ("Warning: failed to obtain color of text object %s, no style feature!" % self.features["id"])
             return None
         else:
             return self.features["style"]["fill"]
 
+    def set_text(self, new_text):
+         if len(self.tags) != 0:
+             self.tags[0].content = new_text
+             self.tags = self.tags[:1]
+
     def change_font(self, new_font, new_size, bold = False):
         if not "style" in self.features:
-            print "Warning: failed to change font of object %s, no style feature!" % self.features["id"]
+            print ("Warning: failed to change font of object %s, no style feature!" % self.features["id"])
         else:
             if new_font != None:
                 self.features["style"]["font-family"] = new_font
@@ -348,7 +390,7 @@ class Text_object_svg(Object_svg):
 
     def stroke_off(self):
         if not "style" in self.features:
-            print "Warning: failed to turn stroke off in text object %s, no style feature!" % self.features["id"]
+            print ("Warning: failed to turn stroke off in text object %s, no style feature!" % self.features["id"])
         else:
             if "stroke" in self.features["style"]:
                 del self.features["style"]["stroke"]
@@ -462,7 +504,9 @@ def read_svg_file(input_filename):
     curr_text_tag = "" 
     curr_tag_type = None   
     input_file = open(input_filename)
+    s_number = 0
     for string in input_file:
+        s_number += 1
         strip_version = string.strip()
         #---------------------------------------------- 1) Single string per feature
         if (strip_version.split(" ")[0] == "<text") and (strip_version[-7:] == "</text>"):
@@ -479,28 +523,36 @@ def read_svg_file(input_filename):
         if curr_text_tag != "":                 # Text tag reading is in process
            curr_text_tag += " " + strip_version
         else:
-           if (strip_version != "<text") and (strip_version != "<path"): # This string is not a new text string
+           if (strip_version != "<text") and (strip_version != "<path") and (strip_version != "<rect"): # This string is not a new text string
               file_strings.append(string)
 
-        if (strip_version == "<text") or (strip_version == "<path"):  # New <text> or <path> tag found
+        if (strip_version == "<text") or (strip_version == "<path") or (strip_version == "<rect"):  # New <text> or <path> or <rect> tag found
             if curr_text_tag != "":
-                print "Warning: previous required tag was not proceed! Content:"
-                print curr_text_tag
+                print ("Warning: previous required tag was not proceed! Content:")
+                print (curr_text_tag)
             curr_text_tag += strip_version
             curr_tag_type = strip_version.strip("<")
 
-        if (strip_version.count("</text>") != 0) or (strip_version.count("/>") != 0 and curr_text_tag != ""): # Terminating tag reading, appending new object
+        if ((strip_version.count("</text>") != 0) or (strip_version.count("</path>") != 0) or (strip_version.count("</rect>") != 0) or (strip_version.count("/>") != 0) and curr_text_tag != ""): # Terminating tag reading, appending new object
             new_object = None
             try:
                 if curr_tag_type == "text":
                     new_object = Text_object_svg(curr_text_tag)
                     text_objects[new_object.features["id"]] = new_object
-                if curr_tag_type == "path":
+                elif curr_tag_type == "path":
                     new_object = Path_object_svg(curr_text_tag)
                     path_objects[new_object.features["id"]] = new_object
+                elif curr_tag_type == "rect":
+                    new_object = Path_object_svg(curr_text_tag)
+                    path_objects[new_object.features["id"]] = new_object
+                else:
+                    print ("FATAL ERROR: <tag_type> is neither 'text' nor 'path' (or 'rect') but '%s'!" % curr_tag_type)
+                    print ("String number: '%i'" % s_number)
+                    print ("Content: '%s'" % curr_text_tag)
+                    sys.exit()
             except KeyError:
-                print "FATAL ERROR: id feature was not found in text object. Content:"
-                print curr_text_tag
+                print ("FATAL ERROR: id feature was not found in text object. Content:")
+                print (curr_text_tag)
                 sys.exit()
             file_strings.append("!%s %s " % (curr_tag_type, new_object.features["id"]))
             curr_text_tag = ""
@@ -523,7 +575,7 @@ def get_id_order(file_strings, text_objects, my_format_important = True):
                 if curr_type == "text":
                     protein_ids.append(text_objects[curr_id].get_seq_id(True, my_format_important))                    
             except KeyError:
-                print "FATAL ERROR: Cannot replace id %s with '%s' tag string!" % (curr_id, curr_type)
+                print ("FATAL ERROR: Cannot replace id %s with '%s' tag string!" % (curr_id, curr_type))
                 sys.exit()
     return protein_ids
 
@@ -560,7 +612,7 @@ def print_svg_file(output_filename, file_strings, text_objects, path_objects, no
                             curr_color = "#%02x%02x%02x" % (group_color[group_name][0], group_color[group_name][1], group_color[group_name][2])
                         except KeyError:
                             print ("WARNING: Group '%s' was not found in the group colors provided:" % group_name)
-                            print group_color
+                            print (group_color)
                             print ("Sequence ID: '%s'; group data: '%s'" % (curr_seq_id, group[curr_seq_id]))
                             sys.exit()                                                           
                         new_path_object = Path_object_svg('<rect style="fill:%s;opacity:1.0" id="rect%s"\
@@ -607,9 +659,12 @@ def print_svg_file(output_filename, file_strings, text_objects, path_objects, no
                             replace_string = text_objects[curr_id].create_svg_tag()
                 if curr_type == "path":
                     replace_string = path_objects[curr_id].create_svg_tag()
+                if curr_type == "rect":
+                    replace_string = path_objects[curr_id].create_svg_tag()
+
             except KeyError:
-                print "FATAL ERROR: Cannot replace id %s with '%s' tag string!" % (curr_id, curr_type)
+                print ("FATAL ERROR: Cannot replace id %s with '%s' tag string!" % (curr_id, curr_type))
                 sys.exit()
-            if ((curr_type == "text") and (no_names != True)) or (curr_type == "path") or (not text_objects[curr_id].is_leaf()):
+            if ((curr_type == "text") and (no_names != True)) or (curr_type == "path") or (curr_type == "rect") or (not text_objects[curr_id].is_leaf()):
                 output_file.write(replace_string + "\n") 
     output_file.close()

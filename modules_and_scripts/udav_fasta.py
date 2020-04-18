@@ -5,7 +5,7 @@ Currently the following formats are accepted: My_Ref, My (v1.3), Uniprot (v1.4),
                                               NCBI (v.2.4), Olesya (v.2.10), COGcollator (v.2.11),
                                               German (v.2.12)
 Now exceptions are considered: FIX: version 2.12
-------- Version: 2.23
+------- Version: 2.25
 Methods included in this module:
         1) dict unredun_org (input_filename, output_filename)
            a)  Reads <input_filename> which is expected to be *.org file produces with the 
@@ -59,7 +59,7 @@ Classes included in this module:
            int  records_num
            str  full_data
 """
-import re, sys
+import re, sys, os
 import copy
 from udav_base import Sequence
 
@@ -78,7 +78,7 @@ def get_id (seq, id_type):
     if id_type == "locus": # FIX: version 2.15
         result = seq.locus
     if result == None:
-        print "FATAL ERROR: no record of type %s found in record %s" % (id_type, seq.full_fasta)
+        print ("FATAL ERROR: no record of type %s found in record %s" % (id_type, seq.full_fasta))
         sys.exit()
     return result
     
@@ -138,7 +138,8 @@ class Annotated_sequence(Sequence):
         Returns sequence name in fasta format of selected flavor
         FIX: version 2.11
         """
-        supported = {"My" : True, "Basic" : True, "NCBI" : True, "ID" : True, "Table" : True, "My & unaligned" : True, "Same but fixed" : True}
+        supported = {"My" : True, "Basic" : True, "NCBI" : True, "ID" : True, "Table" : True, "My & unaligned" : True, 
+                     "Same but fixed" : True, "COGNAT" : True}
         if not format in supported:
             print ("FATAL ERROR: format '%s' is not supported by AnnotatedSequence class!" % format)
             print ("Supported formats are: %s" % supported.keys())
@@ -162,11 +163,15 @@ class Annotated_sequence(Sequence):
         if format == "ID":
            result = ">%s\n" % req_id
         if format == "Table":
-           result = "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (self.gi, self.protein_id, self.organism, 
-                                                          self.gene_begin, self.gene_end, self.gene_direction,
-                                                          self.source_record, self.source_name)        
+           result = "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (self.gi, self.protein_id, self.locus, self.organism, 
+                                                              self.gene_begin, self.gene_end, self.gene_direction,
+                                                              self.source_record, self.source_name)        
         if format == "Same but fixed":   
            result = ">" + re.sub("\/\d+\-\d+$", "", self.name) + "\n"
+        if format == "COGNAT":
+           #>gi|AGL61713.1|ref|AGL61713.1|-1|379..625|L336_0001|1|hypothetical protein|CP005957.1
+           result = ">gi|%s|ref|%s|%s|%s..%s|%s|1|%s|%s\n" % (self.protein_id, self.protein_id, self.gene_direction, self.gene_begin,
+                                                              self.gene_end, self.locus, self.product, self.source_record.split(" ")[0])
         return result
 
     def get_data(self):
@@ -184,8 +189,8 @@ class Organism:
         self.full_data = full_data 
 
 def unredun_org (input_filename, output_filename):
-    print "List of organisms inside the %s file will become unredundant" % input_filename
-    print "Strains with larger proteomes are preferred!"
+    print ("List of organisms inside the %s file will become unredundant" % input_filename)
+    print ("Strains with larger proteomes are preferred!")
     org_list = list()
     unredun_org = dict()
     exceptional_org = {"Bacillus subtilis subsp. subtilis str. 168" : True,
@@ -242,9 +247,9 @@ def unredun_org (input_filename, output_filename):
         output_list.write(unredun_org[key].full_data + "\n")
     output_list.close()
 
-    print "List of unredundant organisms was written to the %s file!" % input_filename
-    print "Species in the original list: %i" % len(org_list) 
-    print "Species in the unredundant list: %i" % len(unredun_org.keys())
+    print ("List of unredundant organisms was written to the %s file!" % input_filename)
+    print ("Species in the original list: %i" % len(org_list))
+    print ("Species in the unredundant list: %i" % len(unredun_org.keys()))
     #----------------------------------------------------------------------------------    
     required_org = dict()
     for key in unredun_org.keys():
@@ -252,7 +257,8 @@ def unredun_org (input_filename, output_filename):
     return required_org
 
 def read_req_list (input_filename, mode = "all", req_code = "1"):      
-    print "List of entries inside the %s file will be red; mode = %s" % (input_filename, mode)
+    input_filename = os.path.abspath(input_filename)
+    print ("List of entries inside the %s file will be red; mode = %s" % (input_filename, mode))
     required = dict()
     input_list = open (input_filename, "r") 
     for string in input_list:
@@ -287,7 +293,7 @@ def read_req_list (input_filename, mode = "all", req_code = "1"):
                     if e_value < mode:
                         required[gi] = True
     input_list.close()
-    print "DONE. Total %i entries names were obtained" % len(required.keys())
+    print ("DONE. Total %i entries names were obtained" % len(required.keys()))
     return required
 
 def get_sequence_data (string, format):
@@ -296,11 +302,11 @@ def get_sequence_data (string, format):
     if format == "My_Ref":
         fields = string.split("|")
         if len(fields) != 13: 
-            print "FATAL ERROR: Unexpected file format. Check that recent version of"
-            print "             'My_Ref' format was used!"
-            print "Number of fields: %i" % len(fields)
-            print "String = %s" % string
-            print fields
+            print ("FATAL ERROR: Unexpected file format. Check that recent version of")
+            print ("             'My_Ref' format was used!")
+            print ("Number of fields: %i" % len(fields))
+            print ("String = %s" % string)
+            print (fields)
             raise FastaException
         result_seq = Annotated_sequence(fields[1], fields[3], fields[4], fields[5], fields[7],
                               fields[8], fields[9], fields[10], fields[11], fields[12], string) 
@@ -321,9 +327,9 @@ def get_sequence_data (string, format):
         curr_descr = string.split(" ", 1)[1]
         fields = curr_id.split("|")
         if len (fields) != 3:
-            print "FATAL ERROR: Unexpected file format in Uniprot!"
-            print "Number of fields: %i" % len(fields)
-            print "String = %s" % string
+            print ("FATAL ERROR: Unexpected file format in Uniprot!")
+            print ("Number of fields: %i" % len(fields))
+            print ("String = %s" % string)
             raise FastaException        
         source = fields[0]
         AC = fields[1]
@@ -335,7 +341,7 @@ def get_sequence_data (string, format):
             DE = match.groups()[0].replace(" OS", "")
             OS = match.groups()[1].replace(" GN", "").replace(" OX", "") #FIX: version 2.22 (Uniprot format could be: >... OS=Streptomyces sp. BK022 OX=2512123)
         else:
-            print "Match here was None: %s" % string
+            print ("Match here was None: %s" % string)
         result_seq = Annotated_sequence(AC, ID, "Unk", DE, OS, -1, -1, 0, "Unk", source, string) 
         #print "source = %s, AC = %s, ID = %s, OS = %s" % (source, AC, ID, OS)
 
@@ -356,9 +362,10 @@ def get_sequence_data (string, format):
         #>gi|42761457|ref|NP_976267.1|pML_02|hypothetical protein|Methanohalophilus mahii plasmid pML, complete sequence.|Methanohalophilus mahii
         fields = string.split("|")
         if len(fields) != 8:
-            print "WARNING: Unexpected file format. Check that 'OldRef' format was used!"
-            print "Number of fields: %i" % len(fields)
-            print "String = %s" % string                    
+            print ("WARNING: Unexpected file format. Check that 'OldRef' format was used!")
+            print ("Number of fields: %i" % len(fields))
+            print ("String = %s" % string)
+            raise FastaException                           
         result_seq = Annotated_sequence(fields[1], fields[3], "Unk", fields[5], fields[7],
                               -1, -1, 0, "Unk", fields[6], string) 
 
@@ -368,9 +375,9 @@ def get_sequence_data (string, format):
         #>gi|57116782|ref|NP_215295.2| Probable protease II PtrBb [second part] (oligopeptidase B) [Mycobacterium tuberculosis H37Rv]
         fields = string.split(" ", 1)
         if len(fields) != 2:
-            print "FATAL ERROR: Unexpected file format. Check that 'NCBI_2016-' (old NCBI) format was used!"
-            print "Number of fields: %i" % len(fields)
-            print "String = %s" % string                    
+            print ("FATAL ERROR: Unexpected file format. Check that 'NCBI_2016-' (old NCBI) format was used!")
+            print ("Number of fields: %i" % len(fields))
+            print ("String = %s" % string)
             raise FastaException
         ids = fields[0].split("|")
         gi = ids[1]
@@ -386,9 +393,9 @@ def get_sequence_data (string, format):
         #>NP_212397.2 signal peptidase I [Borrelia burgdorferi B31]
         fields = string.split(" ", 1)
         if len(fields) != 2:
-            print "FATAL ERROR: Unexpected file format. Check that 'NCBI' format was used!"
-            print "Number of fields: %i" % len(fields)
-            print "String = %s" % string                    
+            print ("FATAL ERROR: Unexpected file format. Check that 'NCBI' format was used!")
+            print ("Number of fields: %i" % len(fields))
+            print ("String = %s" % string)
             raise FastaException        
         gi = fields[0]
         protein_id = fields[0]
@@ -421,10 +428,10 @@ def get_sequence_data (string, format):
         id_part = string.split(" ", 1)[0]
         ids = id_part.split("|")
         if len(ids) != 4:
-            print "WARNING: Unexpected file format: expected 'URef', changed to 'Basic'"
-            print "Number of fields in id part: %i" % len(ids)
-            print "String = %s" % string
-            print ids
+            print ("WARNING: Unexpected file format: expected 'URef', changed to 'Basic'")
+            print ("Number of fields in id part: %i" % len(ids))
+            print ("String = %s" % string)
+            print (ids)
             format = "Basic" # FIX: 2.18 (quiet behavior)
             #raise FastaException
         else:
@@ -433,10 +440,10 @@ def get_sequence_data (string, format):
             description_part = string.split(" ", 1)[1]
             fields = description_part.split("|")
             if len(fields) != 9: 
-                print "FATAL ERROR: Unexpected file format. Check that 'URef' format was used!"
-                print "Number of fields in description part: %i" % len(fields)
-                print "String = %s" % string
-                print fields
+                print ("FATAL ERROR: Unexpected file format. Check that 'URef' format was used!")
+                print ("Number of fields in description part: %i" % len(fields))
+                print ("String = %s" % string)
+                print (fields)
                 raise FastaException
             result_seq = Annotated_sequence(gi, protein_id, fields[0], fields[1], fields[3],
                                   fields[4], fields[5], fields[6], fields[7], fields[8], string, fields[2]) 
@@ -487,6 +494,32 @@ def get_sequence_data (string, format):
             description = fields[1]
         result_seq = Annotated_sequence(protein_id, protein_id, "Unk", description, "Unk", -1, -1, 0, "Unk", "Unk", string)
 
+    if format == "COGNAT": #FIX: version 2.24 (COGNAT is a format used by COGNAT desktop database)
+        #>gi|AGL61713.1|ref|AGL61713.1|-1|379..625|L336_0001|1|hypothetical protein|CP005957.1
+        fields = string.split("|")
+        if len(fields) != 10:
+            print ("WARNING: Unexpected file format. Check that 'COGNAT' format was used!")
+            print ("Number of fields: %i" % len(fields))
+            print ("String = %s" % string)
+            raise FastaException        
+
+        begin = int(fields[5].split("..")[0])
+        end = int(fields[5].split("..")[1])
+        result_seq = Annotated_sequence(fields[1], fields[3], fields[6], fields[8], "Unk",
+                              begin, end, fields[4], "Unk", fields[9], string) 
+
+    if format == "COGNAT_nucl": #FIX: version 2.25 (COGNAT_nucl is a format used by COGNAT desktop database for nucleotide records)
+        #>ref|AAXS01000132|candidate division TM7 genomosp. GTL1|Bacteria; Candidatus Saccharibacteria; candidate division TM7 genomosp. GTL1|Candidate division TM7 genomosp. GTL1 ctg713, whole genome shotgun sequence.
+        #(self, gi, protein_id, locus, product, organism, gene_begin, gene_end, gene_direction, taxonomy, source_record, full_fasta, source_name = None)
+        fields = string.split("|")
+        if len(fields) != 5:
+            print ("WARNING: Unexpected file format. Check that 'COGNAT_nucl' format was used!")
+            print ("Number of fields: %i" % len(fields))
+            print ("String = %s" % string)
+            raise FastaException        
+        result_seq = Annotated_sequence(fields[1], "Unk", "Unk", "Unk", fields[2],
+                              -1, -1, 0, fields[3], "Unk", string, fields[4]) 
+
     if result_seq == None:
         print ("WARNING: sequence from this string was not obtained. Possibly unsupported file format: %s" % format)
         print (string)
@@ -503,7 +536,7 @@ def read_fasta (filename, sample_filename, occurrence_filename, protein_occur, v
       str  sample_filename        - prefix for the output files
       str  occurrence_filename    - name of file with occurence of proteins in organisms
       dict protein_occur          - hash where protein occurence should be deposited (non-empty or empty)
-      int  verbose_limit          - how many sequences should be red before anouncement on the screen appears
+      int  verbose_limit          - how many sequences should be red before anouncement on the screen appears (FIX: set to 100500 to silence)
       bool big_file               - if True, resulting gene list will be empty as this is a large file
       dict required_id            - if not None, dictionary of protein_id requered
       dict required_org           - of not None, dictionary of requered organism names
@@ -512,13 +545,15 @@ def read_fasta (filename, sample_filename, occurrence_filename, protein_occur, v
       str  format                 - format of the input file (see method 'get_sequence_data' for all supported)
       str  attr_for_protein_occur - name of protein
     """
-    print "Started reading input fasta file: %s" % filename
+    filename = os.path.abspath(filename)
+    if not (verbose_limit == 100500): print ("Started reading input fasta file: %s" % filename)
     if sample_filename != None: # Sample file is to be printed
-        print "Sample (which meet requirements) will be printed to the file %s" % sample_filename
+        sample_filename = os.path.abspath(sample_filename)
+        print ("Sample (which meet requirements) will be printed to the file %s" % sample_filename)
         reject_filename = sample_filename + ".reject"
-        print "Data on rejections (if any) will be printed to the file %s" % reject_filename
+        print ("Data on rejections (if any) will be printed to the file %s" % reject_filename)
         short_filename = sample_filename + ".short"
-        print "Sample in 'My' format will be printed to the file %s" % short_filename
+        print ("Sample in 'My' format will be printed to the file %s" % short_filename)
         sample_file = open(sample_filename, "w")
         short_file = open(short_filename, "w")
         reject_file = open(reject_filename, "w")
@@ -530,7 +565,7 @@ def read_fasta (filename, sample_filename, occurrence_filename, protein_occur, v
         reject_file.write("# Maximal length: %s\n" % max_len)
         reject_file.write("#ID\tlength\tproduct\n")
     else:
-        print "No sample (or rejection) file will be created!"
+        if not (verbose_limit == 100500): print ("No sample (or rejection) file will be created!")
 
     fasta_file = open(filename, "r")
     seqs = list()
@@ -548,7 +583,7 @@ def read_fasta (filename, sample_filename, occurrence_filename, protein_occur, v
             v += 1
             n += 1
             if v > verbose_limit:
-                print "Proceeding %i sequence..." % n                
+                if not (verbose_limit == 100500): print ("Proceeding %i sequence..." % n)
                 v = 0                
             take_seq = True
             curr_seq = get_sequence_data(string, format)            
@@ -659,7 +694,7 @@ def read_fasta (filename, sample_filename, occurrence_filename, protein_occur, v
         else:
             if sample_filename != None: reject_file.write("%s\t%i\t%s\n" % (seqs[-1].protein_id, len(seqs[-1].sequence), seqs[-1].product))
             seqs.pop()
-    print "Total records in bank found: %i" % n
+    if not (verbose_limit == 100500): print ("Total records in bank found: %i" % n)
         
     fasta_file.close()
     if sample_filename != None:
