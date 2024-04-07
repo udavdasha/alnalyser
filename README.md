@@ -17,7 +17,7 @@ The script is written in Python2.7 / Tkinter, and I hope soon it will also work 
 
 One questionable feature of this piece of software is that it does NOT utilize specific bioinformatical
 python modules (like biopython), but instead in several steps it uses native binary programs.
-* **muscle** (https://www.drive5.com/muscle/) - for multiple alignment
+* **muscle** (https://drive5.com/muscle/downloads_v3.htm) - for multiple alignment (use version 3.8.31)
 * **hmmbuild, hmmpress and hmmscan** from HMMer (http://hmmer.org/) - for similary searches with profiles
 
 In order to work with the 'Features' tab, which from my point of view is very nice idea, one should have two
