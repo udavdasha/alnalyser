@@ -78,6 +78,8 @@ class AlnConverter(tkinter.Frame):
                 string = string.strip()
                 if len(string) == 0:
                     continue
+                if string[0] == "#": # Now also considering output of <bioenergetics_graph.py>
+                    continue
                 if string[0] == ">":               
                     new_seq = udav_fasta.get_sequence_data(string, self.input_format.get()) 
                     seqs.append(new_seq)

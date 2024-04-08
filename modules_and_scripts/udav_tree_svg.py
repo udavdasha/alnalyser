@@ -1,6 +1,6 @@
 """
 Module for working with svg (Inkscape) documents considered there are trees there
-------- Version: 2.0
+------- Version: 2.3
         1.5  * Proper class & function documentation added
              * <Path_object_svg> class is added
         1.6  * Recursion cyclisation is prevented in graph
@@ -11,6 +11,8 @@ Module for working with svg (Inkscape) documents considered there are trees ther
         1.92 * Now 'My' format can be used to enter additional sequences information in the middle
         1.93 * Group coloring is improved: now multiple groups are allowed
         2.0  * Not only tree svg, but custom svg should be red correctry
+        2.3  * Method <get_id_order> now relies on the y coordinate of text object instead of its 
+               position in file (iTOL compatible)
 """
 
 import sys, re, math
@@ -187,6 +189,10 @@ class Path_object_svg(Object_svg):
         Object_svg.__init__(self, path_tag_content)
         self.proceed_feature("style")
 
+    #def get_drawing_start(self):
+    #    d_feature_match = re.match("[Mm] ([-\d\.]+)\,([-\d\.])+", self.features["d"])
+    #    return (d_feature_match.group(1), d_feature_match.group(2))
+
     def change_line_color(self, new_color):
         if not "style" in self.features:
             print ("Warning: failed to change color of path object %s, no style feature!" % self.features["id"])
@@ -260,11 +266,17 @@ class Path_object_svg(Object_svg):
 
     def set_fill(self, new_fill):
         if not "style" in self.features:
-            print ("Warning: failed to set size of stroke of path object %s, no style feature!" % self.features["id"])
+            print ("Warning: failed to set fill of path object %s, no style feature!" % self.features["id"])
             return None
         else:
             self.features["style"]["fill"] = new_fill
 
+    def set_opacity(self, new_opacity):
+        if not "style" in self.features:
+            print ("Warning: failed to set opacity of path object %s, no style feature!" % self.features["id"])
+            return None
+        else:
+            self.features["style"]["opacity"] = new_opacity
 
 class Text_object_svg(Object_svg):
     def __init__(self, text_tag_content):
@@ -301,12 +313,19 @@ class Text_object_svg(Object_svg):
                 fields = fields[0].split(" ")
         else:
             fields = self.content.strip().split(" ")
-        #print (fields)
+
+        seq_range = None
+        if re.match("^[0-9]+\-[0-9]+$", fields[-1]): # This is identifier like '123456789_1-456' converted to '123456789 1-456'
+            seq_range = fields.pop(-1)
+        seq_id = "_".join(fields)
+        if exact and (seq_range != None): 
+            seq_id += "_" + seq_range
+        """
         seq_id = fields[0]
         second_part_is_id = None # FIX 1.9: detection of ID is fixed to fit locus IDs
         try:
             int(fields[1])
-            if len(fields) == 3: # This could be only 'ID 1 150'
+            if len(fields) == 3: # This could be only 'ID 1 150' #FIX: v.2.2 (also locus_tag could be like: 'OHA_1_00311')!
                 second_part_is_id = False
             else: # This could be a locus like 'HVO_0835' converted to 'HVO 0835' or 'HVO 0835 1 150'
                 second_part_is_id = True
@@ -336,6 +355,7 @@ class Text_object_svg(Object_svg):
                         pass
                     except IndexError:
                         pass
+        """
         return seq_id
 
     def set_new_x(self, new_x):
@@ -567,6 +587,15 @@ def get_id_order(file_strings, text_objects, my_format_important = True):
     produce a tree!
     """
     protein_ids = list()
+    text_tags_keys = list(text_objects.keys())
+    text_tags_keys = sorted(text_tags_keys, key=lambda k:float(text_objects[k].features["y"])) #FIX: version 2.3
+    for text_tag_key in text_tags_keys:
+        curr_seq_id = text_objects[text_tag_key].get_seq_id(True, my_format_important)
+        if "Tree_scale" in curr_seq_id: #FIX 2.3: iTOL output considered too             
+            print ("Label '%s' is technical and will not be considered" % curr_seq_id)
+        else:
+            protein_ids.append(curr_seq_id)
+    """
     for string in file_strings:
         if string[0] == "!": # This is unchanged file string
             curr_type = string.split(" ")[0].strip("!")
@@ -577,18 +606,32 @@ def get_id_order(file_strings, text_objects, my_format_important = True):
             except KeyError:
                 print ("FATAL ERROR: Cannot replace id %s with '%s' tag string!" % (curr_id, curr_type))
                 sys.exit()
+    """
     return protein_ids
 
-def print_svg_file(output_filename, file_strings, text_objects, path_objects, no_names = None, group = None, group_color = None, remove_support = False):
+def print_svg_file(output_filename, file_strings, text_objects, path_objects, no_names = None, group = None, group_color = None, remove_support = False, additional_groups = None):
     output_file = open(output_filename, "w")
     n = 0
     m = 0 
     group_label_strings = list() # List of strings with the group labels (if any)
+    prev_string = None     
     for string in file_strings:
+        if string.strip() == "</g>": # This is the end of the group
+            prev_string = string
+            continue
+        if (additional_groups != None) and (string.strip() == "</svg>") and (prev_string != None): # This is the last string, now <additional_groups> should be written
+                for gbk_id in additional_groups.keys():
+                    output_file.write('<g id="%s">\n' % gbk_id)
+                    for path_tag in additional_groups[gbk_id]:
+                        output_file.write("%s\n" % path_tag.create_svg_tag())
+                    output_file.write("</g>\n")
+                #for group_string in group_label_strings:
+                #    output_file.write(group_string + "\n")
+        if prev_string != None:        
+            output_file.write(prev_string)
+            prev_string = None
+
         if string[0] != "!": # This is unchanged file string
-            #if string.strip() == "</svg>": # This is the last string
-            #    for group_string in group_label_strings:
-            #        output_file.write(group_string + "\n")
             output_file.write(string)
         else:
             curr_type = string.split(" ")[0].strip("!")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, os, shutil, re, argparse, platform
 if platform.system() == "Windows":
-    sys.path.append("D:\\UdavBackup\\_Complete_genomes\\_scripts")
+    sys.path.append("H:\\UdavBackup\\_Complete_genomes\\_scripts")
 else:
     sys.path.append("/media/udavdasha/Data/scripts")
 import udav_base, udav_soft, udav_convert

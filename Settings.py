@@ -1,8 +1,8 @@
 """
 This module contains class <Settings> and a method for reading an input file into it.
-This is used in <COGalyser> and <Alnalyser> software
+This is used in <COGalyser>, <Alnalyser> and <NyanTranslate> software
  
-Module version: 1.1
+Module version: 1.1.2
 """
 
 import sys, os, platform
@@ -73,7 +73,7 @@ def read_settings_file (filename, req_attributes, not_path_attr = dict()):
     except:
         print ("")
         print ("[FATAL ERROR] Settings file '%s' does not exist, consider creating one for %s!" % (filename, platform.system()))
-        print ("              If your settings file has another name, pass it to Alnalyser as an argument")
-        sys.exit() #FIX (version 1.0.1): if no settings file presents, further work is impossible
+        print ("              If your settings file has another name, pass it to the main script as an argument")
+        sys.exit() #FIX (version 1.1.1): if no settings file presents, further work is impossible
     settings_object = Settings(set, req_attributes)
     return settings_object

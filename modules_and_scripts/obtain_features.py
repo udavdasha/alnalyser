@@ -3,7 +3,7 @@ import sys, os, argparse
 import udav_align, udav_base, udav_soft
 
 #========================================================================================
-curr_version = 1.6
+curr_version = 1.7
 parser = argparse.ArgumentParser(description = 
 "This script will obtain features file for given alignment (Pfam + TMHMM in this version) \
 Current version is %s" % curr_version 
@@ -51,7 +51,8 @@ alignment = udav_base.read_alignment(myargs.input_file)
 
 TMHMM_result = None
 if myargs.TMHMM != None:
-    TMHMM_result = udav_soft.read_TMHMM_output(myargs.TMHMM)
+    #TMHMM_result = udav_soft.read_TMHMM_output(myargs.TMHMM)
+    TMHMM_result = udav_soft.read_DeepTMHMM_output(myargs.TMHMM)
 
 Pfam_result = None
 if myargs.Pfam != None:

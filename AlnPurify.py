@@ -322,7 +322,7 @@ class AlnPurify(tkinter.Frame):
                     self.actions.item(a, values = ("%s, %s" % (curr_values[0], column_values[0]), curr_values[1]))
                 break
         if should_add:
-            self.actions.insert("", "end", 0, text = protein_id, values = column_values, tags = curr_tags)
+            self.actions.insert("", "end", text = protein_id, values = column_values, tags = curr_tags)
 
     def get_self_hit_info(self, evalue_threshold, sigma_num, no_hit, poor_hit, partial_hit):
         hit_positions = dict()        
@@ -410,7 +410,7 @@ class AlnPurify(tkinter.Frame):
                 long_seq.append(protein_id) 
 
     def apply_purification_options(self):
-        print "    Applying purification options!"
+        print ("    Applying purification options!")
         tag_info = {"no_hit"      : ("#FF0000", "#000000"), # No hit found at any e-value threshold
                     "poor_hit"    : ("#000000", "#FFFF00"), # Weak hit found (with e-value higher than current threshold)                    
                     "partial_hit" : ("#FF0000", "#FFFFFF"), # Possible N-terminal flaw or organism join (id marked by fore and sequence region by back)
@@ -618,7 +618,7 @@ class AlnPurify(tkinter.Frame):
                 match = re.match("(.+)\_\d+\-d+$", protein_id)
                 if match != None: # 123456789_1-99                
                     protein_id = match.group(1)
-                    print protein_id
+                    print (protein_id)
                 else: # CRP_ECOLI or YP_12345678.9 or Nther_1492
                     pass
 

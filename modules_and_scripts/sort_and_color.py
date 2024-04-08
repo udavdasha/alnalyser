@@ -3,7 +3,7 @@ import sys, os, argparse, re
 import udav_fasta, udav_base, udav_tree_svg, udav_soft
 
 #========================================================================================
-curr_version = 4.3
+curr_version = 4.4
 parser = argparse.ArgumentParser(description = 
 "This script will kill two rabbits: it (1) color tree according to the coloring rules and \
 (2) sorts input alignment file by the order of the given tree. Can also identify and mark isoforms. \
@@ -69,6 +69,8 @@ def read_direct_tax_assignment(assign_filename, id_to_taxonomy, short_id_to_taxo
 #----------- 1) Tree reading
 print ("Reading tree file from .svg picture...")
 (file_strings, text_tags, path_tags) = udav_tree_svg.read_svg_file(myargs.input_tree)
+#text_tags_keys = list(text_tags.keys())
+#text_tags_keys = sorted(text_tags_keys, key=lambda k:float(text_tags[k].features["y"])) #FIX: version 4.5
 print ("\tDONE! Found %i text tags" % len(text_tags.keys()))
 
 leaves = 0
@@ -147,7 +149,7 @@ if myargs.assign != None: #----------- 1a) Changing text tags (coloring)
     m = 0
     for key in text_tags.keys():
         text_tags[key].stroke_off() # FIX 3.4: stroke should be turned off
-        curr_id = text_tags[key].get_seq_id(False)        
+        curr_id = text_tags[key].get_seq_id(False)
         before_version_part = curr_id.split(".", 1)[0] # FIX 4.0: if version (xxxx.1) is omitted in taxonomy data
         first_part = curr_id.split("_", 1)[0]
         curr_id = curr_id.split("-", 1)[0]        
@@ -196,6 +198,8 @@ if myargs.assign != None: #----------- 1a) Changing text tags (coloring)
         else:
             if text_tags[key].content.strip() in taxonomy_colors:
                 print ("Found taxonomy name in the file (%s), not changing..." % text_tags[key].content.strip())
+            elif "Tree_scale" in curr_id: #FIX 4.4: iTOL output considered too
+                print ("Label '%s' is technical and will not be considered" % curr_id)
             elif len(text_tags[key].content) > 5:
                 new_color = taxonomy_colors["Unknown"]
                 text_tags[key].change_text_color(new_color)

@@ -186,7 +186,7 @@ class Alnalyser(tkinter.Frame):
             curr_tag = "no_color"
             if domain_id in self.domain_to_color:
                 curr_tag = domain_id 
-            self.domain_info.insert("", "end", 0, text = domain_id, values = (curr_domain[0], curr_occurence, curr_domain[1]),
+            self.domain_info.insert("", "end", text = domain_id, values = (curr_domain[0], curr_occurence, curr_domain[1]),
                                     tags = (curr_tag, ))
 
     def domain_info_LMB_click(self, event):
