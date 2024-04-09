@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import os, platform
-import Tkinter as tkinter
-import tkMessageBox, tkFileDialog
+import tkinter
+import tkinter.messagebox as tkMessageBox
+import tkinter.filedialog as tkFileDialog
 import Aln_basic, Settings
 import subprocess
 
@@ -14,7 +15,6 @@ class AlnParse(tkinter.Frame):
         self.pure = None
         self.run_hmmsearch_Pfam = None # Button to run HMM search with the Pfam database
         self.run_hmmsearch_COG = None  # Button to run HMM search with the COG database
-        self.run_TMHMM = None          # Button to run TMHMM program (only works under Linux)
         self.begin_entry = None
         self.step_entry = None
         self.nsteps_entry = None        
@@ -45,8 +45,6 @@ class AlnParse(tkinter.Frame):
         self.run_hmmsearch_Pfam.grid(row = 0, column = 2, sticky = "NSW", padx = self.p, pady = self.p)  
         self.run_hmmsearch_COG = tkinter.Button(self.pure.panel, state = tkinter.DISABLED, text = "HMM search (COG)", command = self.hmmsearch_COG)
         self.run_hmmsearch_COG.grid(row = 0, column = 3, sticky = "NSW", padx = self.p, pady = self.p)  
-        self.run_TMHMM = tkinter.Button(self.pure.panel, state = tkinter.DISABLED, text = "TMHMM", command = self.TMHMM)
-        self.run_TMHMM.grid(row = 0, column = 4, sticky = "NSW", padx = self.p, pady = self.p)  
 
         tkinter.Label(self.pure.panel, text = "Enter begin, step and nsteps:").grid(row = 1, column = 0, sticky = "NSW")
         self.begin_entry = tkinter.Entry(self.pure.panel, width = 8)
@@ -95,14 +93,13 @@ class AlnParse(tkinter.Frame):
         fixed_filename = os.path.join(self.host.settings.work_dir, "%s.fixed" % self.host.temp_name)
         Aln_basic.write_widget_into_file(self.fixed.text_widget, fixed_filename)
 
-        if self.host.verbose.get():
-            os.system("%s -i %s -w %s -o %s -t %s" % (sort_and_color_path, os.path.basename(fixed_filename), self.host.settings.work_dir, 
-                                                      self.host.temp_name, tree_filename))
-        else:
-            os.system("%s -i %s -w %s -o %s -t %s 1> nul 2> nul" % (sort_and_color_path, os.path.basename(fixed_filename), 
-                                                                    self.host.settings.work_dir, self.host.temp_name, tree_filename))
+        temp_out_prefix = os.path.join(self.host.settings.work_dir, self.host.temp_name)
+        command = "%s -i %s -o %s -t %s" % (sort_and_color_path, fixed_filename, temp_out_prefix, tree_filename)
+        if not self.host.verbose.get():
+            command += "1> nul 2> nul"
+        os.system(command)
 
-        temp_sorted_filename = os.path.join(self.host.settings.work_dir, "%s.tree_sorted" % self.host.temp_name)
+        temp_sorted_filename = "%s.tree_sorted" % temp_out_prefix
         Aln_basic.read_widget_from_file(self.fixed.text_widget, temp_sorted_filename)
                 
         self.IDs.text_widget.delete(1.0, tkinter.END)
@@ -208,22 +205,12 @@ class AlnParse(tkinter.Frame):
         except AttributeError:
            print ("    COG profile database is not set; Pfam database analysis is not possible")
 
-        try:
-           a = self.host.settings.tmhmm_dir
-           if platform.system() == "Linux":
-               self.run_TMHMM.configure(state = tkinter.NORMAL)
-           else:
-               print ("    Operation system is not Linux and thus TMHMM cannot be executed!")
-        except AttributeError:
-           print ("    Path to TMHMM is not set; transmembrane helix search is not possible")
-
         self.length_histo.configure(state = tkinter.NORMAL)
         print ("    [..DONE..]")
 
     def disable_pure_analysis(self):
         self.run_hmmsearch_Pfam.configure(state = tkinter.DISABLED)
         self.run_hmmsearch_COG.configure(state = tkinter.DISABLED)
-        self.run_TMHMM.configure(state = tkinter.DISABLED)
 
     def hmmsearch_Pfam(self):
         self.hmmsearch_profile_database(self.host.settings.pfam_profiles, "Pfam")
@@ -246,13 +233,12 @@ class AlnParse(tkinter.Frame):
         result_filename = os.path.join(self.host.settings.work_dir, self.host.get_project_name(), "%s.%s_out" % (self.host.get_project_name(), database_type))
         table_filename = os.path.join(self.host.settings.work_dir, self.host.get_project_name(), "%s.%s_table" % (self.host.get_project_name(), database_type))
         args = [hmmscan_path, "--domtblout", table_filename, "-o", result_filename, profile_database, pure_filename]
+        print ("Running the following command:")
+        print (" ".join(args))
         subprocess.Popen(args, stderr = subprocess.PIPE, stdout = subprocess.PIPE)
-        self.host.pending_filenames.append(result_filename)
+        #self.host.pending_filenames.append(result_filename)
         self.host.pending_filenames.append(table_filename)
         self.host.enable_check_button()
-
-    def TMHMM(self):
-        print ("Currently this cannot be done; please use TMHMM web server instead!")
 
     def check_numbers(self):
         """

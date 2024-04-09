@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import os, re
-import Tkinter as tkinter
-import ttk, tkMessageBox
+import tkinter
+import tkinter.messagebox as tkMessageBox
+import tkinter.ttk as ttk
 import Aln_basic, Settings
 
 class ActionMenu(tkinter.Menu):
@@ -224,8 +225,7 @@ class AlnPurify(tkinter.Frame):
             s.print_fasta(alnfile)
         alnfile.close()
         (hmmbuild_name, hmmbuild_path) = Settings.get_program_name(self.host.settings.hmmer_dir, "hmmbuild")
-        (hmmpress_name, hmmpress_path) = Settings.get_program_name(self.host.settings.hmmer_dir, "hmmpress")
-        (hmmscan_name, hmmscan_path) = Settings.get_program_name(self.host.settings.hmmer_dir, "hmmscan")
+        (hmmsearch_name, hmmsearch_path) = Settings.get_program_name(self.host.settings.hmmer_dir, "hmmsearch")
         hmm_filename = os.path.join(self.host.settings.work_dir, "%s.hmm" % self.host.temp_name)
         result_filename = os.path.join(self.host.settings.work_dir, "%s.self_out" % self.host.temp_name)
         domtable_filename = os.path.join(self.host.settings.work_dir, "%s.self_domtable" % self.host.temp_name)
@@ -238,20 +238,18 @@ class AlnPurify(tkinter.Frame):
             os.system("%s --wnone --informat=afa %s %s" % (hmmbuild_path, hmm_filename, aligned_filename))
         else:
             os.system("%s --wnone --informat=afa %s %s 1> nul 2> nul" % (hmmbuild_path, hmm_filename, aligned_filename))
-        # --------------------------------------- 2) HMMscan
-        self.host.set_status("Running HMMpress and HMMscan", "#FF0000")   
-        print ("    Running HMMscan to search for the self-hits...")     
+        # --------------------------------------- 2) HMMsearch
+        self.host.set_status("Running HMMsearch", "#FF0000")   
+        print ("    Running HMMsearch to search for the self-hits...")     
         if self.host.verbose.get():
-            os.system("%s %s" % (hmmpress_path, hmm_filename))
-            os.system("%s --tblout %s --domtblout %s -o %s %s %s" % (hmmscan_path, table_filename, domtable_filename, result_filename, hmm_filename, pure_filename))
+            os.system("%s --tblout %s --domtblout %s -o %s %s %s" % (hmmsearch_path, table_filename, domtable_filename, result_filename, hmm_filename, pure_filename))
         else:
-            os.system("%s %s 1> nul 2> nul" % (hmmpress_path, hmm_filename))
-            os.system("%s --tblout %s --domtblout %s -o %s %s %s 1> nul 2> nul" % (hmmscan_path, table_filename, domtable_filename, result_filename, hmm_filename, pure_filename))        
+            os.system("%s --tblout %s --domtblout %s -o %s %s %s 1> nul 2> nul" % (hmmsearch_path, table_filename, domtable_filename, result_filename, hmm_filename, pure_filename))        
 
         # --------------------------------------- 3) Obtaining features
         self.host.set_status("Obtaining self-hit features", "#FF0000")
         print ("    Obtaining self-hit features...")           
-        (self.id_to_features, domains) = udav_soft.read_Pfam_output(domtable_filename, "1.0", False, None, True)
+        (self.id_to_features, domains) = udav_soft.read_Pfam_output(domtable_filename, "1.0", False, None, add_score = True, hmmsearch_output = True)
         del udav_base, udav_soft
         #os.remove(result_filename)
         #os.remove(domtable_filename)
@@ -575,18 +573,46 @@ class AlnPurify(tkinter.Frame):
         error = False
         import udav_base, udav_tree_svg
         if self.host.gi_to_tax == None:
-            self.host.set_status("Reading assignment of gi to taxonomy", "#FF0000")
-            try: #FIX: (version 1.0) if <settings.table_filename> is not given, nothing bad will happen
-                self.host.gi_to_tax = udav_base.read_gi_to_tax(self.host.settings.gi_to_tax_filename)
-            except AttributeError:
-                print ("    [ERROR]: File with assignment between protein id and taxonomy was not given to the script!")
-                print ("             Please check 'gi_to_tax_filename' option in the <settings.ini> file")                   
+            self.host.set_status("Reading assignment of gi to taxonomy", "#FF0000")            
+            curr_tax_text = self.host.input_tab.tax_input_frame.text_widget.get(1.0, tkinter.END).strip()
+            strings = curr_tax_text.split("\n")
+            first_symbol = None
+            try:
+                first_symbol = strings[0][0]
+            except IndexError:
+                print ("    [ERROR]: Taxonomy data is empty, please insert it into the 'Input' tab")
                 self.host.set_status("Assignment of protein id to taxonomy was not loaded", "#888800")
                 error = True
-            except FileNotFoundError:
-                print ("    [ERROR]: File with assignment between protein id and taxonomy '%s' not found!" % self.host.settings.gi_to_tax_filename) 
-                self.host.set_status("Assignment of protein id to taxonomy was not loaded", "#888800")
-                error = True
+
+            if first_symbol == ">": # URef format input
+                self.host.gi_to_tax = dict()
+                for string in strings:
+                    string = string.strip()
+                    if len(string) == 0:
+                        continue
+                    if string[0] == ">":
+                        try:
+                            #                          [0]                         [1]                                                [2]                                         [3]                    [4]     [5]   [6]                                [7]                                   
+                            #>gi|Unk|ref|BAF59926.1 PTH_1745|3-oxoacyl-(acyl-carrier-protein) synthase III|Pelotomaculum thermopropionicum SI DNA, complete genome.|Pelotomaculum thermopropionicum SI|1827707|1828699|-1|Bacteria; Firmicutes; Clostridia; Clostridiales; Peptococcaceae; Pelotomaculum|AP009389 BAAC01000000 BAAC01000001-BAAC01000195 @ GCA_000010565.1_ASM1056v1
+                            protein_id = string.split(" ", 1)[0].split("|")[3]
+                            fields = string.split(" ", 1)[1].split("|")
+                            locus = fields[0]
+                            taxonomy_field = fields[7]
+                            taxons = taxonomy_field.split(";")
+                            if len(taxons) == 1:
+                                self.host.gi_to_tax[protein_id] = taxons[0]
+                                self.host.gi_to_tax[locus] = taxons[0]
+                            else:
+                                self.host.gi_to_tax[protein_id] = taxons[1].strip()
+                                self.host.gi_to_tax[locus] = taxons[1].strip()
+                        except IndexError as e:
+                            print ("    [ERROR]: URef format is wrong in the following line, not enought fields:")
+                            print ("             '%s'" % string)
+                            self.host.set_status("Assignment of protein id to taxonomy was not loaded", "#888800")
+                            error = True                             
+            else:
+                self.host.gi_to_tax = udav_base.read_gi_to_tax(strings, True)
+
         if self.host.tax_to_color == None:
             try: 
                 (self.host.tax_to_color, tax_order) = udav_tree_svg.read_taxonomy_colors(self.host.settings.tax_colors_filename)

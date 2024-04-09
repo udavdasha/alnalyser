@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import os, sys, platform
 import codecs
-import Tkinter as tkinter
-import tkMessageBox, tkFont
+import tkinter
+import tkinter.messagebox as tkMessageBox
+import tkinter.font
 
 def exists(setting_object, setting_name, method_to_check_existence, object_name, addition_to_path = ""):
     """
@@ -165,9 +166,9 @@ class TextFrameWithLabelAndButton(tkinter.Frame):
         self.text_widget = None       
         self.button = None
         self.font_size = 8
-        self.normal_font = None   # tkFont for the text
-        self.bold_font = None     # tkFont for the "bold" tag
-        self.italic_font = None   # tkFont for the "italic" tag
+        self.normal_font = None   # tkinter.font.Font for the text
+        self.bold_font = None     # tkinter.font.Font for the "bold" tag
+        self.italic_font = None   # tkinter.font.Font for the "italic" tag
         self.create_UI(label_text, button_text)
 
     def create_UI(self, label_text, button_text):
@@ -188,16 +189,16 @@ class TextFrameWithLabelAndButton(tkinter.Frame):
         text_scr_y.grid(row = 1, column = 1, sticky = "NSEW")
         text_scr_x = tkinter.Scrollbar(self, orient = tkinter.HORIZONTAL)
         text_scr_x.grid(row = 2, column = 0, sticky = "NSEW")
-        self.normal_font = tkFont.Font(self.text_widget, ("Courier New", self.font_size))
+        self.normal_font = tkinter.font.Font(self.text_widget, ("Courier New", self.font_size))
         self.text_widget = tkinter.Text(self, state = tkinter.NORMAL, font = self.normal_font,
                                         yscrollcommand = text_scr_y.set, xscrollcommand = text_scr_x.set, wrap = tkinter.NONE)
         self.text_widget.grid(row = 1, column = 0, sticky = "NSEW")
         text_scr_y.configure(command = self.text_widget.yview)
         text_scr_x.configure(command = self.text_widget.xview)
-        self.bold_font = tkFont.Font(self.text_widget, self.text_widget.cget("font"))
+        self.bold_font = tkinter.font.Font(self.text_widget, self.text_widget.cget("font"))
         self.bold_font.configure(weight = "bold")
         self.text_widget.tag_configure("bold", font = self.bold_font)
-        self.italic_font = tkFont.Font(self.text_widget, self.text_widget.cget("font"))
+        self.italic_font = tkinter.font.Font(self.text_widget, self.text_widget.cget("font"))
         self.italic_font.configure(slant = "italic")
         self.text_widget.tag_configure("italic", font = self.italic_font)
         self.text_widget.tag_configure("blocks", font = self.bold_font, foreground = "#0000FF")
@@ -261,7 +262,7 @@ class TextFrameWithLabelAndButton(tkinter.Frame):
         if len(lengths.keys()) == 0: # No sequences found
            result = ""
         elif(len(lengths.keys())) == 1: # All sequences have the same length
-           result = lengths.keys()[0]
+           result = list(lengths.keys())[0]
         else:
            result = "different lengths"
         self.add_label_data(result)   

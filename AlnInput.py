@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, re
-import Tkinter as tkinter
-import tkMessageBox
+import tkinter
+import tkinter.messagebox as tkMessageBox
 import Aln_basic, Settings
 
 class AlnInput(tkinter.Frame):
@@ -15,6 +15,7 @@ class AlnInput(tkinter.Frame):
         self.p = self.host.p
         self.aln_input_frame = None  # Frame with the text widget for the alignment
         self.seq_input_frame = None  # Frame with the text widget for the unaligned sequences
+        self.tax_input_frame = None  # Frame with the text widget for taxonomy-related data
         self.maxiters = None         # Entry for muscle parameter maxiters (leave blank for default)
         self.gapopen = None          # Entry for muscle parameter gapopen (leave blank for default)
         self.gapextend = None        # Entry for muscle parameter gapextend (leave blank for default)
@@ -58,6 +59,15 @@ class AlnInput(tkinter.Frame):
 
         filter_identical = tkinter.Button(self.seq_input_frame.panel, text = "Filter identical", command = self.filter_seq)
         filter_identical.grid(row = 0, column = 9, sticky = "NSW", padx = self.p, pady = self.p)
+
+        self.tax_input_frame = Aln_basic.TextFrameWithLabelAndButton(central_panel, self.p, self.host.header, "#FFFFFF",
+                               "Taxonomy data (sequences in URef format or tab-separated values):", "")
+        self.tax_input_frame.button.grid_forget()
+        central_panel.add(self.tax_input_frame)
+
+        self.update_idletasks()
+        central_panel.sash_place(0, 480, 1)
+        central_panel.sash_place(1, 1440, 1)
 
     def filter_seq(self):
         """
@@ -221,9 +231,14 @@ class AlnInput(tkinter.Frame):
         sequence_filename = os.path.join(self.host.settings.work_dir, self.host.get_project_name(), "%s.sample" % self.host.get_project_name())
         Aln_basic.write_widget_into_file(self.seq_input_frame.text_widget, sequence_filename, False)
 
+    def save_taxonomy_data(self):
+        tax_filename = os.path.join(self.host.settings.work_dir, self.host.get_project_name(), "%s.tax" % self.host.get_project_name())
+        Aln_basic.write_widget_into_file(self.tax_input_frame.text_widget, tax_filename, False)
+
     def clear(self):
         self.seq_input_frame.text_widget.delete(1.0, tkinter.END)
         self.aln_input_frame.text_widget.delete(1.0, tkinter.END)
+        self.tax_input_frame.text_widget.delete(1.0, tkinter.END)
 
     def apply_actions(self, ids_to_remove, ids_to_fix):
         print ("    Removement started...")

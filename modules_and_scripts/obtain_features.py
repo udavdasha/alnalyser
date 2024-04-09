@@ -3,26 +3,27 @@ import sys, os, argparse
 import udav_align, udav_base, udav_soft
 
 #========================================================================================
-curr_version = 1.7
+curr_version = 1.8
 parser = argparse.ArgumentParser(description = 
 "This script will obtain features file for given alignment (Pfam + TMHMM in this version) \
 Current version is %s" % curr_version 
 )
 parser.add_argument("-i", help = "Name of the alignment (name = ID is expected)", required = True, dest = "input_file")
-parser.add_argument("-w", help = "Name of working directory (use . to work where you run script)", required=True, dest = "work_dir")
 parser.add_argument("-o", help = "Name of the output feature file", required = True, dest ="output_file")
 parser.add_argument("-t", help = "Name of TMHMM result for given file (one line per protein)", required = False, dest = "TMHMM")
 parser.add_argument("-l", help = "Letters of amino acids which should be added as features (string)", required = False, dest = "letters")
-parser.add_argument("-p", help = "Name of HMMer output for Pfam database (result of -domtblout option)", required = False, dest = "Pfam")
+parser.add_argument("-p", help = "Name of HMMer output for Pfam database (result of --domtblout option)", required = False, dest = "Pfam")
 parser.add_argument("-e", help = "Give here global domain e-value threshold (DEFAULT = 1.0)", required = False, dest = "evalue")
 parser.add_argument("-f", help = "If domain filtering required, give here threshold for overlap in percent", required = False, dest = "filter_thresh")
+parser.add_argument("--unite", help = "Unite same domains following each other (use carefully)", action = "store_true", dest = "unite")
+parser.add_argument("--max_dist", help = "If same domains are united, this is a maximum distance between them in a protein", required = False, default = 50, dest = "max_dist")
+parser.add_argument("--max_hmm_overlap", help = "If same domains are united, this is a maximal overlap between them in HMM coordinates (in % of length of longer HMM hit)", required = False, default = 30, dest = "max_hmm_overlap")
 parser.add_argument("-c", help = "Give here file with name correspondence to replace and sort input file", required = False, dest = "correspond")
 parser.add_argument("-s", help = "File with color scheme (required if -c is used)", required = False, dest = "scheme")
 parser.add_argument("-r", help = "If names in the input should not be changed, enter this option", required = False, action = "store_false", dest = "replace")
 parser.add_argument("-d", help = "Name of output file with information about the domains found (if required)", required = False, dest = "domain_filename")
-                                                                                                                                       
 myargs = parser.parse_args()
-[myargs.work_dir, myargs.input_file, myargs.output_file, myargs.TMHMM, myargs.Pfam, myargs.correspond, myargs.scheme, myargs.domain_filename] = udav_base.proceed_params([myargs.work_dir, myargs.input_file, myargs.output_file, myargs.TMHMM, myargs.Pfam, myargs.correspond, myargs.scheme, myargs.domain_filename])
+
 if myargs.evalue == None:
     myargs.evalue = 1.0
 myargs.evalue = float(myargs.evalue)
@@ -30,6 +31,10 @@ filter_on = False
 if myargs.filter_thresh != None:
     myargs.filter_thresh = float(myargs.filter_thresh)
     filter_on = True
+if myargs.max_dist != None:
+    myargs.max_dist = int(myargs.max_dist)
+if myargs.max_hmm_overlap != None:
+    myargs.max_hmm_overlap = float(myargs.max_hmm_overlap)
 #========================================================================================
 def get_letter_features(sequence, letters):
     no_gaps = sequence.replace("-", "")
@@ -52,11 +57,12 @@ alignment = udav_base.read_alignment(myargs.input_file)
 TMHMM_result = None
 if myargs.TMHMM != None:
     #TMHMM_result = udav_soft.read_TMHMM_output(myargs.TMHMM)
-    TMHMM_result = udav_soft.read_DeepTMHMM_output(myargs.TMHMM)
+    TMHMM_result = udav_soft.read_DeepTMHMM_output(myargs.TMHMM) #FIX: version 1.7
 
 Pfam_result = None
 if myargs.Pfam != None:
-    (Pfam_result, domains) = udav_soft.read_Pfam_output(myargs.Pfam, myargs.evalue, filter_on, myargs.filter_thresh)
+    (Pfam_result, domains) = udav_soft.read_Pfam_output(myargs.Pfam, myargs.evalue, filter_on, myargs.filter_thresh, unite_same = myargs.unite, max_distance = myargs.max_dist, max_hmm_overlap = myargs.max_hmm_overlap)
+
     if myargs.domain_filename != None:
         domain_file = open(myargs.domain_filename, "w")
         for domain in domains.keys():

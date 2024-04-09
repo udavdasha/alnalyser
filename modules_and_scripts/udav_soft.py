@@ -8,7 +8,7 @@ software blocks:
     (5) COG database
     (6) Genbank assembly and Prodigal
     (7) BLAST (from <get_operon.py>)
-------- Version: 3.2
+------- Version: 3.3
 """
 import os, sys, re
 import math
@@ -433,7 +433,7 @@ def unite_same_Pfam_hits(id_to_domains, max_distance = 50, max_hmm_overlap = 20)
     print ("Total %i unitings of the same domains were done!" % n)
     return id_to_domains
 
-def read_Pfam_output(input_filename, max_e_value, filter_hits, threshold, add_score = False, unite_same = False, max_distance = 50, max_hmm_overlap = 20, do_not_get_features = False, use_c_evalue = False):
+def read_Pfam_output(input_filename, max_e_value, filter_hits, threshold, add_score = False, unite_same = False, max_distance = 50, max_hmm_overlap = 20, do_not_get_features = False, use_c_evalue = False, hmmsearch_output = False):
     """
     Method reads <input_filename> produced under -domtblout option by hmmscan. It is
     working with hits with i (independent) e-value not higher than that given <max_e_value>.
@@ -449,6 +449,8 @@ def read_Pfam_output(input_filename, max_e_value, filter_hits, threshold, add_sc
     as is
     If <use_c_evalue> if True, conditional e-value (column #11) will be checked against <max_e_value>
     instead of independent e-value (column #12)
+
+    If <hmmsearch_output> is True, query and target fields are cnahged
 
     Results tuple of two values:
     (1) Hash of protein IDs to a string configured from domains found in a format like this:
@@ -473,9 +475,12 @@ def read_Pfam_output(input_filename, max_e_value, filter_hits, threshold, add_sc
         fields = re.split(" +", string, 22)
         try:
             domain_name = fields[0]
+            protein_id = fields[3]
+            if hmmsearch_output: #FIX: version 3.3
+                domain_name = fields[3]
+                protein_id = fields[0]
             domain_ac = fields[1].split(".")[0]
             domain_description = fields[22]
-            protein_id = fields[3]
             evalue = None
             if use_c_evalue:
                 evalue = fields[11]
@@ -495,7 +500,7 @@ def read_Pfam_output(input_filename, max_e_value, filter_hits, threshold, add_sc
         #print ("NAME = %s, AC = %s, DESCR = %s, PROTEIN = %s, begin = %s, end = %s" % (domain_name, domain_ac, domain_description, protein_id, begin, end))
 
         #---- 1) E-value check
-        if float(evalue) > max_e_value:
+        if float(evalue) > float(max_e_value):
             continue
 
         #---- 2) Adding to hash with protein id as keys

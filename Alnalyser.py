@@ -3,10 +3,11 @@
 This is a main script of the <Alnalyser> program
 @ Daria Dibrova aka udavdasha
 """
-curr_version = "1.0.3"
-import Tkinter as tkinter
-import tkMessageBox, tkFileDialog
-import ttk
+curr_version = "1.1.1"
+import tkinter
+import tkinter.messagebox as tkMessageBox
+import tkinter.filedialog as tkFileDialog
+import tkinter.ttk as ttk
 import sys, os, platform, re, random
 import Settings, ColorFrame, Aln_basic, AlnInput, AlnParse, AlnPurify, AlnFeatures, AlnLog, AlnConverter
 
@@ -34,7 +35,7 @@ class Alnalyser(tkinter.Frame):
                              "Working"   : ("PLEASE WAIT", "#FF0000"),
                              "Alignment" : ("ALIGNING, PLEASE WAIT", "#FF0000"),
                              "OK"        : ("Everything is OK!", self.header)}
-        req_settings = ["script_dir", "muscle_dir", "hmmer_dir", "pfam_profiles", "cog_profiles", "work_dir", "gi_to_tax_filename", "tax_colors_filename", "table_filename"]
+        req_settings = ["script_dir", "muscle_dir", "hmmer_dir", "pfam_profiles", "cog_profiles", "work_dir", "tax_colors_filename", "table_filename"]
         random.seed()
         self.temp_name = "udav_temp_%i" % (random.random() * 1000)
         self.settings = Settings.read_settings_file(settings_filename, req_settings)
@@ -175,7 +176,7 @@ class Alnalyser(tkinter.Frame):
                     domain_occurence[domain_id] = 0
                 domain_occurence[domain_id] += 1
                                   # --------- 2) Adding information
-        sorted_domains = domain_occurence.keys()
+        sorted_domains = list(domain_occurence.keys())
         sorted_domains.sort(key = lambda k: domain_occurence[k], reverse = True)
         for domain_id in sorted_domains:
             if domain_id == "TMHMM":
@@ -325,7 +326,7 @@ class Alnalyser(tkinter.Frame):
            and cog_profiles attributes of <self.settings>;
         2) directories <self.settings.work_dir> and <self.settings.script_dir> must exist, files 
            <self.settings.pfam_profiles> and <self.settings.cog_profiles> must exist;
-        3) programs 'muscle' and 'hmmbuild', 'hmmpress', 'hmmscan' must exist in respective directories.
+        3) programs 'muscle' and 'hmmbuild', 'hmmsearch' must exist in respective directories.
         """
         results = list()
         results.append(Aln_basic.exists(self.settings, "muscle_dir", os.path.isdir, "Muscle directory"))
@@ -338,7 +339,7 @@ class Alnalyser(tkinter.Frame):
             extension = ".exe"
         results.append(Aln_basic.exists(self.settings, "muscle_dir", os.path.isfile, "Muscle program", "muscle" + extension))
         results.append(Aln_basic.exists(self.settings, "hmmer_dir", os.path.isfile, "HMMbuild program", "hmmbuild" + extension))
-        results.append(Aln_basic.exists(self.settings, "hmmer_dir", os.path.isfile, "HMMpress program", "hmmpress" + extension))
+        results.append(Aln_basic.exists(self.settings, "hmmer_dir", os.path.isfile, "HMMsearch program", "hmmsearch" + extension))
         results.append(Aln_basic.exists(self.settings, "hmmer_dir", os.path.isfile, "HMMscan program", "hmmscan" + extension))
 
         if False in results:
@@ -366,10 +367,16 @@ class Alnalyser(tkinter.Frame):
         while i < len(self.pending_filenames):
             filename = self.pending_filenames[i]
             if os.path.isfile(filename):
-                if os.path.getctime(filename) != os.path.getmtime(filename):
-                    files_ready.append(filename)
-                    self.pending_filenames.pop(i)
-                    i -= 1
+                file_to_check = open(filename)
+                strings = file_to_check.readlines()
+                file_to_check.close()
+                try:
+                    if strings[-1].strip() == "# [ok]":
+                        files_ready.append(filename)
+                        self.pending_filenames.pop(i)
+                        i -= 1
+                except IndexError:
+                    print ("File '%s' is not yet ready..." % filename) 
             i += 1
         if len(self.pending_filenames) == 0:
             self.disable_check_button()
@@ -389,9 +396,6 @@ class Alnalyser(tkinter.Frame):
                 if extension == "COG_table":
                     Aln_basic.read_widget_from_file(self.features_tab.hmmresults_COG.text_widget, curr_file)
                     ready_and_required.append(extension)
-                if extension == "TMHMM":
-                    Aln_basic.read_widget_from_file(self.features_tab.TMHMM_results.text_widget, curr_file)
-                    ready_and_required.append(extension)      
           
         if len(ready_and_required) == 0: # No files are ready
             self.set_status("Sorry, no file delivered!")
@@ -416,6 +420,7 @@ class Alnalyser(tkinter.Frame):
         self.save_colors()
         self.input_tab.save_alignment()
         self.input_tab.save_sequence_sample()
+        self.input_tab.save_taxonomy_data()
         self.purify_tab.save_actions()
         self.parse_tab.save_fixed(False)
         self.parse_tab.save_pure(False)
@@ -438,9 +443,13 @@ class Alnalyser(tkinter.Frame):
 
         self.domain_colors = list()
         self.domain_to_colors = dict()
+        self.gi_to_tax = None
         self.domain_colors.append(("Enter domain/COG ID", "#FFFFFF"))
         self.domain_colors.append(("TMHMM", "#FF0000"))
         self.domain_to_color["TMHMM"] = "#FF0000"
+        
+        for i in self.domain_info.get_children():
+            self.domain_info.delete(i)
 
         self.project_title_widget.delete(0, tkinter.END)
         self.clear_temp_files()
@@ -466,6 +475,7 @@ class Alnalyser(tkinter.Frame):
         project_files = os.listdir(project_dir)
         extension_to_widget = {"aln"            : self.input_tab.aln_input_frame.text_widget,
                                "sample"         : self.input_tab.seq_input_frame.text_widget,
+                               "tax"            : self.input_tab.tax_input_frame.text_widget,
                                "fixed"          : self.parse_tab.fixed.text_widget,
                                "pure"           : self.parse_tab.pure.text_widget,
                                "blocks_regions" : self.parse_tab.blocks.text_widget,

@@ -3,7 +3,7 @@ import sys, os, argparse, re
 import udav_fasta, udav_base, udav_tree_svg, udav_soft
 
 #========================================================================================
-curr_version = 4.4
+curr_version = 4.6
 parser = argparse.ArgumentParser(description = 
 "This script will kill two rabbits: it (1) color tree according to the coloring rules and \
 (2) sorts input alignment file by the order of the given tree. Can also identify and mark isoforms. \
@@ -12,11 +12,11 @@ Current version is %s" % curr_version
 parser.add_argument("-i", help = "Name of the alignment file", required = False, dest = "input_align")
 parser.add_argument("-y", help = "   Toggle this to work not with the alignment but with URef format sequences", action = "store_true", dest = "yes_sample")
 parser.add_argument("-t", help = "Name of the tree file (svg format)", required = True, dest = "input_tree")
-parser.add_argument("-w", help = "Name of working directory (use . to work where you run script)", required=True, dest = "work_dir")
 parser.add_argument("-o", help = "Prefix for the output files", required = True, dest ="output")
 parser.add_argument("-c", help = "-- For coloring: File with the coloring", required = False, dest ="colors")
 parser.add_argument("-a", help = "-- For coloring: name of the id to taxonomy assignment (fasta file or table)", required = False, dest = "assign")
-parser.add_argument("-f", help = "-- For coloring: Format (Uref or My_Ref) if fasta file is given", required = False, dest = "format")
+parser.add_argument("-f", help = "-- For coloring: Format (URef or My_Ref) if fasta file is given", required = False, dest = "format")
+parser.add_argument("--add_assign", help = "-- Additional id to taxonomy assignment file (URef)", required = False, dest = "add_assign")
 parser.add_argument("-u", help = "Use this option if SwissProt sequence names should be enlarged", action = "store_true", dest = "uniprot")
 parser.add_argument("-m", help = "Chouse if alignment contains more sequences then tree and they should be added", action = "store_true", dest = "more")
 parser.add_argument("-n", help = "Chouse if 'no-name' tree file should be printed", action = "store_true", dest = "no_names")
@@ -30,7 +30,6 @@ parser.add_argument("-x", help = "Mark proteins with given mark (e.g., 'COG0001'
 parser.add_argument("-p", help = "Print plain id list as found on the tree", action = "store_true", required = False, dest = "plain_list")
 parser.add_argument("-z", help = "If tree contains gi, give here file with the assignment gi->id (.table format)", required = False, dest = "gi_to_id_filename")
 myargs = parser.parse_args()
-[myargs.work_dir, myargs.input_align, myargs.output, myargs.input_tree, myargs.assign, myargs.color, myargs.bank_isoform, myargs.group, myargs.group_colors] = udav_base.proceed_params([myargs.work_dir, myargs.input_align, myargs.output, myargs.input_tree, myargs.assign, myargs.colors, myargs.bank_isoform, myargs.group, myargs.group_color])
 color_file_path = "D:\\UdavBackup\\_Complete_genomes\\_scripts\\udav_color_taxonomy.txt"
 if myargs.colors != None:
     color_file_path = myargs.colors
@@ -132,6 +131,18 @@ if myargs.assign != None: #----------- 1a) Changing text tags (coloring)
         else:
             print ("FATAL ERROR: '%s' is not a file or directory!" % myargs.assign)
             sys.exit()
+    if myargs.add_assign != None: # FIX: version 4.5
+        (add_long_names, add_l_not_found) = udav_fasta.read_fasta(myargs.add_assign, None, None, dict(),
+                                           100, False, None, None, None, None, "URef")
+        for s in add_long_names:
+            prot_id = s.get_proper_protein_id()
+            curr_taxonomy = s.taxonomy.split("; ")
+            if not s.locus in id_to_taxonomy:
+                id_to_taxonomy[s.locus] = curr_taxonomy
+            if not prot_id.split(".")[0] in id_to_taxonomy:
+                id_to_taxonomy[prot_id.split(".")[0]] = curr_taxonomy
+            if not s.gi in id_to_taxonomy:
+                id_to_taxonomy[s.gi] = curr_taxonomy
 
     isoforms = dict() # Dictionary of protein ID to an isoform label # FIX version 3.0
     if myargs.bank_isoform != None:
@@ -188,7 +199,7 @@ if myargs.assign != None: #----------- 1a) Changing text tags (coloring)
                     except:
                         pass
                     curr_id_in_caps = (curr_id == curr_id.upper())            
-                    if (first_part_len < 5) and (first_part_len != 2) and not(first_part_is_numeric) and curr_id_in_caps: #FIX 1.3: YP_... is not colored; changing for SwissProt
+                    if (first_part_len < 5) and (first_part_len != 2) and not("scale" in curr_id) and not(first_part_is_numeric) and curr_id_in_caps: #FIX 1.3: YP_... is not colored; changing for SwissProt; FIX: 4.4 iTOL Tree_scale considered
                         text_tags[key].change_font("Arial", 10, True)                
                 #text_tags[key].change_font("Courier New", 12)                
                 #text_tags[key].content = curr_id + " " + seq_long.organism
@@ -286,9 +297,9 @@ for curr_id in ordered_ids:
         continue   
     if re.match("^0\.\d+$", curr_id): # FIX: version 4.3 (scale bar value was treated as a regex, e.g. '0.20' matches 'RHA1_ro01202')
         continue
-
+    part_of_curr_id = curr_id.split("-")[0]
     for aln_id in id_hash_align.keys():
-        if re.search(curr_id, aln_id) != None: #FIX: version 4.2 (re.search instead of re.match)
+        if (re.search(curr_id, aln_id) != None) or (re.search(part_of_curr_id, aln_id) != None): #FIX: version 4.2 (re.search instead of re.match), version 4.6 (iTOL lame output considered)
             #seq_aligned = id_hash_align.pop(aln_id) #FIX: version 4.2
             seq_aligned = id_hash_align[aln_id]
             sorted_seq.append(seq_aligned)

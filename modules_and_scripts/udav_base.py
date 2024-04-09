@@ -485,13 +485,16 @@ def sort_by_features(featured_alignment):
                     
     return sorted_alignment    
 
-def read_gi_to_tax(filename):
+def read_gi_to_tax(filename, strings_directly = False):
     """
     Method reads assignment of GIs to two (or one) taxonomy units and returns a dictionary
-    of GI -> last taxon. This file can be produced for example by the <get_gi_to_taxa.py>
+    of GI -> last taxon. This file can be produced for example by the <get_gi_to_taxa.py>.
+    If <strings_directly> is True, not a filename but strings
     """
     gi_to_tax = dict()
-    input_file = open(filename)
+    input_file = filename
+    if not strings_directly:
+        input_file = open(filename)
     for string in input_file:
         string = string.strip()
         if len(string) == 0:
@@ -507,7 +510,8 @@ def read_gi_to_tax(filename):
         if len(fields) > 2:
             taxon = fields[2]
         gi_to_tax[gi] = taxon
-    input_file.close()
+    if not strings_directly:
+        input_file.close()
     return gi_to_tax
 
 def read_unique_assignment(filename, what = "unique assignment"):
@@ -519,11 +523,16 @@ def read_unique_assignment(filename, what = "unique assignment"):
         string = string.strip()
         if len(string) == 0:
             continue
+        if string[0] == "#":
+            continue
         fields = string.split("\t", 1)
         if fields[0] in key_to_value:
             print ("    [WARNING]: %i is assigned to two different values: %s and %s!" % (fields[0], key_to_value[fields[0]], fields[1]))
             w += 1
-        key_to_value[fields[0]] = fields[1]      
+        try:
+            key_to_value[fields[0]] = fields[1]      
+        except IndexError:
+            print ("    [FATAL ERROR]: String '%s' does not contain tabulation marks!" % string)         
     assign_file.close()
     print ("    Obtained %i key-value pairs; total %i warnings obtained" % (len(key_to_value.keys()), w))
     return key_to_value

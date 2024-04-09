@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os, re
-import Tkinter as tkinter
+import tkinter
 import Aln_basic
 
 class AlnFilter(tkinter.Frame):

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os, re, time
-import Tkinter as tkinter
-import ttk
+import tkinter
 import Aln_basic
 
 class AlnLog(tkinter.Frame):
