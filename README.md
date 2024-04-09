@@ -1,6 +1,6 @@
 <img src="https://github.com/udavdasha/alnalyser/blob/master/images/adv_image.png" alt="Alnalyser preview">
 
-# alnalyser
+# Alnalyser
 **Your helper for a reasonable work with multiple sequence alignments (in bioinformatics)**
 
 This software is aimed to help in a daily routine work of a bioinformatician who works with multiple 
@@ -15,9 +15,9 @@ multiple alignment and phylogenetic tree.
 Please visit our web page for other bioinformatical tools and more info: http://boabio.belozersky.msu.ru/en/scientific-group
 
 # Dependencies
-The script is written in Python2.7 / Tkinter, and I hope soon it will also work smoothly on Python3+!
+Current version of Alnalyser works with Python3+ and Tkinter. Last version supporting Python 2.7 was 1.0.3.
 
-One questionable feature of this piece of software is that it does NOT utilize specific bioinformatical
+One (questionable) feature of this piece of software is that it does NOT utilize specific bioinformatical
 python modules (like biopython), but instead in several steps it uses native binary programs.
 * **muscle** (https://drive5.com/muscle/downloads_v3.htm) - for multiple alignment (use version 3.8.31)
 * **hmmbuild, hmmsearch and hmmscan** from HMMer (http://hmmer.org/) - for similary searches with profiles
