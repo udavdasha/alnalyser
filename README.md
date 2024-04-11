@@ -25,7 +25,7 @@ python modules (like biopython), but instead in several steps it uses native bin
 In order to work with the 'Features' tab, which from my point of view is a very nice idea, one should have two
 databases of sequence profiles:
 * **Pfam** (get a release from here: https://www.ebi.ac.uk/interpro/download/pfam/)
-* **COG** (look for a button "Download all HMM profiles" here: https://depo.msu.ru/module/cogcollator)
+* **COG** (look for a link "Download all COGs profile HMMs" here: http://boabio.belozersky.msu.ru/en/tools)
 
 As mentioned above, Alnalyser can store and work out information about transmembrane helices predictions
 in the format given by the **DeepTMHMM** (https://dtu.biolib.com/DeepTMHMM). Please use the .gff3 output format
