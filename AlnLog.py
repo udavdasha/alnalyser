@@ -10,6 +10,7 @@ class AlnLog(tkinter.Frame):
         self.host = host
         self.p = self.host.p
         self.auto_log = None     # Frame for the automatically generated log
+        self.remove_log = None   # Place for protein sequences which were removed due to purification actions
         self.manual_log = None   # Frame for the user-generated log
         self.wrap_auto = None    # tkinter boolean value for the wrapping of the text in the <self.auto_log>
         self.wrap_manual = None  # tkinter boolean value for the wrapping of the text in the <self.manual_log>
@@ -31,6 +32,11 @@ class AlnLog(tkinter.Frame):
         c.grid(row = 0, column = 1, sticky ="NSE", padx = self.p, pady = self.p)
         central_panel.add(self.auto_log)
 
+        self.remove_log = Aln_basic.TextFrameWithLabelAndButton(central_panel, self.p, None, None, 
+                        "Proteins removed from the sample:", "")
+        self.remove_log.button.grid_forget()
+        central_panel.add(self.remove_log)
+
         self.manual_log = Aln_basic.TextFrameWithLabelAndButton(central_panel, self.p, None, None, 
                         "Manually generated log:", "")
         self.manual_log.button.grid_forget()
@@ -38,6 +44,10 @@ class AlnLog(tkinter.Frame):
         c = tkinter.Checkbutton(self.manual_log.panel, text = "Wrap text", variable = self.wrap_manual, command = self.wrap_configure)
         c.grid(row = 0, column = 1, sticky ="NSE", padx = self.p, pady = self.p)
         central_panel.add(self.manual_log)
+
+        self.update_idletasks()
+        central_panel.sash_place(0, 480, 1)
+        central_panel.sash_place(1, 780, 1)
 
     def write_to_log(self, message, is_important = False):
         self.auto_log.text_widget.insert(tkinter.END, "\n\n")   
@@ -123,9 +133,13 @@ class AlnLog(tkinter.Frame):
         auto_filename = os.path.join(self.host.settings.work_dir, self.host.get_project_name(), "%s.auto_log" % self.host.get_project_name())
         Aln_basic.write_widget_into_file(self.auto_log.text_widget, auto_filename, ask_if_exists, True)
 
+        rem_filename = os.path.join(self.host.settings.work_dir, self.host.get_project_name(), "%s.rem_log" % self.host.get_project_name())
+        Aln_basic.write_widget_into_file(self.remove_log.text_widget, rem_filename, ask_if_exists, True)
+
         man_filename = os.path.join(self.host.settings.work_dir, self.host.get_project_name(), "%s.man_log" % self.host.get_project_name())
         Aln_basic.write_widget_into_file(self.manual_log.text_widget, man_filename, ask_if_exists, True)
 
     def clear(self):
         self.auto_log.text_widget.delete(1.0, tkinter.END)
+        self.remove_log.text_widget.delete(1.0, tkinter.END)
         self.manual_log.text_widget.delete(1.0, tkinter.END)

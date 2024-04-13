@@ -57,7 +57,7 @@ alignment = udav_base.read_alignment(myargs.input_file)
 TMHMM_result = None
 if myargs.TMHMM != None:
     #TMHMM_result = udav_soft.read_TMHMM_output(myargs.TMHMM)
-    TMHMM_result = udav_soft.read_DeepTMHMM_output(myargs.TMHMM) #FIX: version 1.7
+    (TMHMM_result, ids_to_strings) = udav_soft.read_DeepTMHMM_output(myargs.TMHMM) #FIX: version 1.7
 
 Pfam_result = None
 if myargs.Pfam != None:

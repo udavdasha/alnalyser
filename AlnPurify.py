@@ -459,7 +459,7 @@ class AlnPurify(tkinter.Frame):
         if self.host.features_tab.features.text_is_empty(): # No features obtained
             self.host.set_status("Cannot show domains; check that features in the 'Features' tab are obtained", "#888800")        
             tkMessageBox.showinfo("Obtain features first", "Before purification analysis please obtain features in the 'Features' tab!")            
-            return
+            raise ValueError
 
         import udav_base
         self.host.set_status("Obtaining sequence features, check the console for progress", "#FF0000")
@@ -467,7 +467,7 @@ class AlnPurify(tkinter.Frame):
         Aln_basic.write_widget_into_file(self.host.input_tab.aln_input_frame.text_widget, aligned_filename, False)        
         features_filename = os.path.join(self.host.settings.work_dir, "%s.features" % self.host.temp_name)
         Aln_basic.write_widget_into_file(self.host.features_tab.features.text_widget, features_filename, False)  
-        self.featured_sequences = udav_base.get_featured(aligned_filename, None, features_filename, dict(), dict(), False) 
+        self.featured_sequences = udav_base.get_featured(aligned_filename, None, features_filename, dict(), dict(), False)
         del udav_base
         self.host.set_status("Ready")
         print ("    [..DONE..]")
@@ -481,8 +481,11 @@ class AlnPurify(tkinter.Frame):
                 self.alignment.text_widget.tag_delete(tag_name)
 
         if self.featured_sequences == None: # No features were obtained previously
-            self.load_featured_sequences()
-
+            try:
+                self.load_featured_sequences()
+            except ValueError:
+                return
+                 
         req_domain_to_color = self.host.domain_to_color
         id_to_req_features = dict()
         blocks_seq = None
@@ -555,7 +558,7 @@ class AlnPurify(tkinter.Frame):
         for protein_id in ids_to_remove.keys():
             organism_remains = False
             if not protein_id in self.id_to_org_and_seq: # This protein was likely removed already
-                ids_to_remove.pop(protein_id)
+                #ids_to_remove.pop(protein_id)
                 p += 1
                 continue
             curr_org = self.id_to_org_and_seq[protein_id][0]

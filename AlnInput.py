@@ -263,6 +263,8 @@ class AlnInput(tkinter.Frame):
                 r += 1
                 if not org_remains:
                     no_org_remains.append((s.ID, s.organism))
+                self.host.log_tab.remove_log.text_widget.insert(tkinter.END, ">%s\n" % s.name)
+                self.host.log_tab.remove_log.text_widget.insert(tkinter.END, s.sequence + "\n\n")
                 continue
             self.seq_input_frame.text_widget.insert(tkinter.END, ">%s\n" % s.name)
             self.seq_input_frame.text_widget.insert(tkinter.END, s.sequence + "\n\n")

@@ -259,6 +259,9 @@ class Alnalyser(tkinter.Frame):
             self.set_status("No alignment to purify!")
             return
 
+        for value in self.purify_tab.actions.get_children(""):
+            self.purify_tab.actions.delete(value)
+
         import udav_base
         self.set_status("Working")
         # --------------------------------------- 1) Calculating cut for mainly gappy parts of alignment
@@ -421,7 +424,7 @@ class Alnalyser(tkinter.Frame):
         self.input_tab.save_alignment()
         self.input_tab.save_sequence_sample()
         self.input_tab.save_taxonomy_data()
-        self.purify_tab.save_actions()
+        #self.purify_tab.save_actions()
         self.parse_tab.save_fixed(False)
         self.parse_tab.save_pure(False)
         self.parse_tab.save_blocks(False)
@@ -485,6 +488,7 @@ class Alnalyser(tkinter.Frame):
                                "TMHMM"          : self.features_tab.TMHMM_results.text_widget,
                               #"features"       : self.features_tab.features.text_widget, #FIX: version 0.2.8 (features should not be loaded)
                                "auto_log"       : self.log_tab.auto_log.text_widget,
+                               "rem_log"       : self.log_tab.remove_log.text_widget,
                                "man_log"        : self.log_tab.manual_log.text_widget}
 
         for curr_file in project_files:
@@ -499,8 +503,8 @@ class Alnalyser(tkinter.Frame):
                     Aln_basic.read_widget_from_file(extension_to_widget[extension], full_filename)
                 if extension == "pure":
                     self.parse_tab.enable_pure_analysis()
-                if extension == "actions":
-                    self.purify_tab.load_actions(full_filename)
+                #if extension == "actions":
+                #    self.purify_tab.load_actions(full_filename)
                 if extension == "colors":
                     self.load_colors_from_file(full_filename)
 

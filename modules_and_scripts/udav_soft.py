@@ -226,6 +226,7 @@ def read_DeepTMHMM_output(input_filename, min_TM_num = 1):
     <min_TM_num> helices or beta-strands.
     """    
     id_to_list_of_TM = dict()
+    id_to_list_of_strings = dict()
     id_order = list()
     input_file = open(input_filename)
     for string in input_file:
@@ -242,6 +243,9 @@ def read_DeepTMHMM_output(input_filename, min_TM_num = 1):
             element_type = fields[1]
             begin = int(fields[2])
             end = int(fields[3])
+            if not protein_id in id_to_list_of_strings:
+                id_to_list_of_strings[protein_id] = list()
+            id_to_list_of_strings[protein_id].append(string)    
             if element_type in ["TMhelix", "Beta sheet"]:
                 if not protein_id in id_to_list_of_TM:
                     id_to_list_of_TM[protein_id] = list()
@@ -260,7 +264,7 @@ def read_DeepTMHMM_output(input_filename, min_TM_num = 1):
             for pair in id_to_list_of_TM[protein_id]:
                 TMHMM_result[protein_id] += "%i..%i," % (pair[0], pair[1])
             TMHMM_result[protein_id] = TMHMM_result[protein_id].strip(",")
-    return TMHMM_result
+    return (TMHMM_result, id_to_list_of_strings)
 
 #------------------------------------------------------------------------------
 #                            (3) Pfam files
