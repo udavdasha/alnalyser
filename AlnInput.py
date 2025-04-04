@@ -28,7 +28,7 @@ class AlnInput(tkinter.Frame):
         central_panel = tkinter.PanedWindow(self, orient = tkinter.HORIZONTAL, sashwidth = self.p * 2, sashrelief = tkinter.RIDGE, background = self.host.back)
         central_panel.grid(row = 0, column = 0, sticky = "NSEW")
         self.aln_input_frame = Aln_basic.TextFrameWithLabelAndButton(central_panel, self.p, self.host.header, "#FFFFFF", 
-                               "Insert multiple alignment or generate it from the left panel:", "Check input")
+                               "Insert multiple alignment or generate it from the central panel:", "Check input")
         self.aln_input_frame.button.configure(command = self.check_input)
         central_panel.add(self.aln_input_frame)
         
@@ -253,6 +253,7 @@ class AlnInput(tkinter.Frame):
         r = 0
 
         no_org_remains = list()
+        self.host.log_tab.remove_log.text_widget.insert(tkinter.END, "\n\n\n")
         for s in seqs:
             if s.ID in ids_to_remove:
                 curr_reason = ids_to_remove[s.ID][0]

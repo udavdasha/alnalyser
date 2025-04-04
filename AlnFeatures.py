@@ -122,17 +122,18 @@ class AlnFeatures(tkinter.Frame):
         if not self.TMHMM_results.text_is_empty():
             TM_filename = os.path.join(self.host.settings.work_dir, "%s.TMHMM" % self.host.temp_name)           
             Aln_basic.write_widget_into_file(self.TMHMM_results.text_widget, TM_filename)
-            data_for_features += " -t %s" % os.path.basename(TM_filename)
+            data_for_features += " -t %s" % TM_filename
         self.host.set_status("Working")
         features_filename = os.path.join(self.host.settings.work_dir, "%s.features" % self.host.temp_name)
         command = "%s -i %s -o %s %s -e %s -f %s --max_dist %s --max_hmm_overlap %s -d %s" % (obtain_features_path, 
                                                        fixed_filename, features_filename, data_for_features, 
                                                        self.evalue_threshold.get(), self.overlap_threshold.get(),
-                                                       self.max_distance.get(), self.max_hmm_overlap.get(), dom_filename)
+                                                       self.max_distance.get(), self.max_hmm_overlap.get(), dom_filename)        
         if self.unite_domains.get():
             command += " --unite"
         if not self.host.verbose.get():
             command += " 1> nul 2> nul"
+        print ("Executing command: '%s'" % command)
         os.system(command)
 
         self.host.set_status("Ready")

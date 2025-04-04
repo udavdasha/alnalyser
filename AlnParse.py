@@ -60,6 +60,11 @@ class AlnParse(tkinter.Frame):
         self.length_histo.grid(row = 1, column = 4, sticky = "NSW", padx = self.p, pady = self.p)
         central_panel.add(self.pure)
 
+        self.ngphylogeny = Aln_basic.TextFrameWithLabelAndButton(central_panel, self.p, None, None, 
+                               "NGPhylogeny replacement:", "")
+        self.ngphylogeny.button.grid_forget()
+        central_panel.add(self.ngphylogeny)  
+
         self.blocks = Aln_basic.TextFrameWithLabelAndButton(central_panel, self.p, None, None, 
                                "Blocks regions:", "Save to file")
         self.blocks.button.configure(command = self.save_blocks)
@@ -80,8 +85,9 @@ class AlnParse(tkinter.Frame):
         central_panel.add(self.IDs)
         self.update_idletasks()
         central_panel.sash_place(0, 300, 1)
-        central_panel.sash_place(1, 1100, 1)
-        central_panel.sash_place(2, 1500, 1)
+        central_panel.sash_place(1, 900, 1)
+        central_panel.sash_place(2, 1300, 1)
+        central_panel.sash_place(3, 1700, 1)
 
     def sort_by_tree(self):
         tree_filename = tkFileDialog.askopenfilename(initialdir = self.host.settings.work_dir, filetypes = (("Inkscape vector file", "*.svg"), ))
@@ -129,6 +135,10 @@ class AlnParse(tkinter.Frame):
         if ask_filename:
             pure_filename = tkFileDialog.asksaveasfilename(filetypes = (("Non-aligned sequences with pure names (fasta)", "*.pure"), ("All", "*.*")))
         Aln_basic.write_widget_into_file(self.pure.text_widget, pure_filename, ask_filename)
+
+    def save_ngphylogeny(self):
+        ngphylogeny_filename = os.path.join(self.host.settings.work_dir, self.host.get_project_name(), "%s.ngphylogeny" % self.host.get_project_name())
+        Aln_basic.write_widget_into_file(self.ngphylogeny.text_widget, ngphylogeny_filename, False)
 
     def save_blocks(self, ask_filename = True):
         name_prefix = os.path.join(self.host.settings.work_dir, self.host.get_project_name(), self.host.get_project_name())
@@ -251,6 +261,7 @@ class AlnParse(tkinter.Frame):
     def clear(self):
         self.fixed.text_widget.delete(1.0, tkinter.END)
         self.pure.text_widget.delete(1.0, tkinter.END)
+        self.ngphylogeny.text_widget.delete(1.0, tkinter.END)
         self.blocks.text_widget.delete(1.0, tkinter.END)
         self.IDs.text_widget.delete(1.0, tkinter.END)       
 

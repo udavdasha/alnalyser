@@ -3,7 +3,7 @@ import udav_align, udav_base
 import re
 
 #========================================================================================
-curr_version = 2.91
+curr_version = 2.95
 parser = argparse.ArgumentParser(description = 
 "This script will remove additional info on sequence range (added by Jalview) and obtain blocks. \
 Blocks should be in one of the sequences with the name 'BLOCKS' and marked with B letter. \
@@ -12,8 +12,7 @@ Classes related to alignments are separated to 'udav_align' module. \
 Current version is %s" % curr_version 
 )
 parser.add_argument("-i", help = "Alignment file", required=True, dest = "input_file")
-parser.add_argument("-w", help = "Name of working directory (use . to work where you run script)", required=True, dest = "work_dir")
-parser.add_argument("-o", help = "Prefix for the output file", required = True, dest = "output")
+parser.add_argument("-o", help = "Prefix for the output files", required = True, dest = "output")
 parser.add_argument("-s", help = "Threshold to do sampling by sequence identity", required = False, dest = "sample_value")
 parser.add_argument("-b", help = "Calculate identity in the blocks regions only", action = "store_true", default = False, dest = "blocks_only")
 parser.add_argument("-f", help = "Name of file with correct organism names", required = False, dest = "org_file")
@@ -23,9 +22,7 @@ parser.add_argument("-e", help = "Give here the name of file with taxonomy corre
 parser.add_argument("-x", help = "Use this if ids only should be printed to the fixed file", action = "store_true", default = False, dest = "id_only")
 parser.add_argument("-r", help = "Motif in the sequences marked by the additional FILTER which will be taken", required = False, dest = "seq_filter")
 parser.add_argument("-m", help = "Motifs in the sequence will be colored as separate letters, enter threshold percentage here", required = False, dest = "motif_std")
-                                                                                                                        
 myargs = parser.parse_args()
-[myargs.work_dir, myargs.input_file, myargs.output, myargs.org_file, myargs.expand] = udav_base.proceed_params([myargs.work_dir, myargs.input_file, myargs.output, myargs.org_file, myargs.expand])
 #========================================================================================
 
 motif_is_std = False
@@ -122,7 +119,6 @@ if myargs.seq_filter != None:
         
 ####
 # 3) Filtering sequences by their identity (under -s option)
-#    Gaps 
 ####
 if myargs.sample_value != None:
     matrix_filename = myargs.output + ".id_matrix"
@@ -183,6 +179,7 @@ if myargs.delete == False:
 
 o = 0
 output_ids = open(myargs.output + ".ids", "w")
+output_ngphylogeny = open(myargs.output + ".ngphylogeny", "w")
 output_orgs = open(myargs.output + ".orgs", "w")
 for s in seq_list:
     req_name = s.correct_organism (correct_orgs, expanded_orgs)
@@ -194,10 +191,14 @@ for s in seq_list:
     #if myargs.id_only == True:
     #    req_name = s.ID
     output_file.write(">%s\n%s\n\n" % (req_name, s.sequence))
+    id_part = req_name.split("|", 1)[0] # FIX: version 2.95 (NGPhylogeny stupid replacement tracked)
+    ngphylogeny_name = re.sub("[^A-Za-z0-9\-_]", "-", req_name)
+    output_ngphylogeny.write("%s\t%s\t%s\n" % (id_part, req_name, ngphylogeny_name))
     if s.name != req_name:
         o += 1
 output_file.close()
 output_ids.close()
+output_ngphylogeny.close()
 output_orgs.close()
 
 udav_base.print_pure_sequences(seq_list, myargs.output + ".pure", myargs.id_only, True)

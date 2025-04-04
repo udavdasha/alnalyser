@@ -211,15 +211,15 @@ class Alnalyser(tkinter.Frame):
             print ("Please double-click with RMB at the row, not heading, to get domain ID copied into the clipboard!")
        
     def parse(self):      
-        aligned_filename = os.path.join(self.settings.work_dir, "%s.aln" % self.temp_name)  
-        Aln_basic.write_widget_into_file(self.input_tab.aln_input_frame.text_widget, aligned_filename)      
+        aligned_filename = os.path.join(self.settings.work_dir, "%s.aln" % self.temp_name)
+        Aln_basic.write_widget_into_file(self.input_tab.aln_input_frame.text_widget, aligned_filename)
         remove_seq_limits_path = os.path.join(self.settings.script_dir, "remove_seq_limits.py")
 
         self.set_status("Working")
         if self.verbose.get():
-            os.system("%s -i %s -w %s -o %s -d -x" % (remove_seq_limits_path, "%s.aln" % self.temp_name, self.settings.work_dir, self.temp_name))
+            os.system("%s -i %s -o %s -d -x" % (remove_seq_limits_path, aligned_filename, os.path.join(self.settings.work_dir, self.temp_name)))
         else:
-            os.system("%s -i %s -w %s -o %s -d -x 1> nul 2> nul" % (remove_seq_limits_path, "%s.aln" % self.temp_name, self.settings.work_dir, self.temp_name))
+            os.system("%s -i %s -o %s -d -x 1> nul 2> nul" % (remove_seq_limits_path, aligned_filename, os.path.join(self.settings.work_dir, self.temp_name)))
         self.set_status("Ready")
 
         try:
@@ -240,6 +240,10 @@ class Alnalyser(tkinter.Frame):
         Aln_basic.read_widget_from_file(self.parse_tab.pure.text_widget, pure_filename)
         self.parse_tab.enable_pure_analysis()
         os.remove(pure_filename)
+
+        ngphylogeny_filename = os.path.join(self.settings.work_dir, "%s.ngphylogeny" % self.temp_name)
+        Aln_basic.read_widget_from_file(self.parse_tab.ngphylogeny.text_widget, ngphylogeny_filename)
+        os.remove(ngphylogeny_filename)
 
         blocks_filename = os.path.join(self.settings.work_dir, "%s.blocks_regions" % self.temp_name)
         if os.path.isfile(blocks_filename):
@@ -481,6 +485,7 @@ class Alnalyser(tkinter.Frame):
                                "tax"            : self.input_tab.tax_input_frame.text_widget,
                                "fixed"          : self.parse_tab.fixed.text_widget,
                                "pure"           : self.parse_tab.pure.text_widget,
+                               "ngphylogeny"    : self.parse_tab.ngphylogeny.text_widget,
                                "blocks_regions" : self.parse_tab.blocks.text_widget,
                                "ids"            : self.parse_tab.IDs.text_widget,
                                "COG_table"      : self.features_tab.hmmresults_COG.text_widget,

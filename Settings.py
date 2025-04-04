@@ -1,6 +1,6 @@
 """
 This module contains class <Settings> and a method for reading an input file into it.
-This is used in <COGalyser>, <Alnalyser> and <NyanTranslate> software
+This is used in <COGalyser>, <Alnalyser>, <pyCOGNAT> and <NyanTranslate> software
  
 Module version: 1.1.2
 """
@@ -44,7 +44,7 @@ class Settings:
         settings_file.write("#\n")
         settings_file.close()
 
-def read_settings_file (filename, req_attributes, not_path_attr = dict()):
+def read_settings_file(filename, req_attributes, not_path_attr = dict()):
     """
     Method reads the settings file <filename> for the program. If the file does
     not exist, empty dictionary will be created
