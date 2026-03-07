@@ -5,6 +5,23 @@ import tkinter
 import tkinter.messagebox as tkMessageBox
 import tkinter.font
 
+def read_ordered_list(list_filename):
+    """
+    Method reads a plain list inside the <list_filename> and returns it as a list,
+    i.e. with the preserved order. Same method as in <udav_soft> module
+    """
+    result = list()
+    list_file = open(list_filename)
+    for string in list_file:
+        string = string.strip()
+        if len(string) == 0:
+            continue
+        if string[0] == "#":
+            continue
+        result.append(string)
+    list_file.close()
+    return result
+
 def exists(setting_object, setting_name, method_to_check_existence, object_name, addition_to_path = ""):
     """
     This method checks if object at <setting_object>.<setting_name> exists with the 
@@ -146,6 +163,9 @@ def export_MEGA_format(text_widget, filename, title):
         begin = 0
         end = begin + step
         s.name = s.name.replace("#", "_")
+        s.name = s.name.replace("(", "_")
+        s.name = s.name.replace(")", "_")
+        s.name = s.name.replace(":", "_")
         mega_file.write("#%s\n" % s.name)
         while end < aln_size:
             mega_file.write("%s\n" % s.sequence[begin:end])

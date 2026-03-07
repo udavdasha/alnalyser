@@ -254,6 +254,7 @@ class AlnInput(tkinter.Frame):
 
         no_org_remains = list()
         self.host.log_tab.remove_log.text_widget.insert(tkinter.END, "\n\n\n")
+        seqs = sorted(seqs, key = lambda k: k.organism) # FIX: sorting by organism added
         for s in seqs:
             if s.ID in ids_to_remove:
                 curr_reason = ids_to_remove[s.ID][0]

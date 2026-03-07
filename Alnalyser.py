@@ -3,7 +3,7 @@
 This is a main script of the <Alnalyser> program
 @ Daria Dibrova aka udavdasha
 """
-curr_version = "1.1.1"
+curr_version = "1.1.2"
 import tkinter
 import tkinter.messagebox as tkMessageBox
 import tkinter.filedialog as tkFileDialog

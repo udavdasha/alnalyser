@@ -35,7 +35,9 @@ class AlnParse(tkinter.Frame):
                                "'Fixed' alignment:", "Save to file")
         self.fixed.button.configure(command = self.save_fixed)
         sort_by_tree = tkinter.Button(self.fixed.panel, background = self.host.header, foreground = "#FFFFFF", text = "Sort by tree", command = self.sort_by_tree)
-        sort_by_tree.grid(row = 0, column = 2, sticky = "NSW", padx = self.p, pady = self.p)  
+        sort_by_tree.grid(row = 0, column = 2, sticky = "NSW", padx = self.p, pady = self.p)
+        sort_by_ids = tkinter.Button(self.fixed.panel, background = self.host.header, foreground = "#FFFFFF", text = "Sort by ids", command = self.sort_by_ids)
+        sort_by_ids.grid(row = 0, column = 3, sticky = "NSW", padx = self.p, pady = self.p)  
         central_panel.add(self.fixed)
 
         self.pure = Aln_basic.TextFrameWithLabelAndButton(central_panel, self.p, None, None,  
@@ -84,11 +86,57 @@ class AlnParse(tkinter.Frame):
         
         central_panel.add(self.IDs)
         self.update_idletasks()
-        central_panel.sash_place(0, 300, 1)
-        central_panel.sash_place(1, 900, 1)
-        central_panel.sash_place(2, 1300, 1)
-        central_panel.sash_place(3, 1700, 1)
+        central_panel.sash_place(0, 500, 1)
+        central_panel.sash_place(1, 1000, 1)
+        central_panel.sash_place(2, 1400, 1)
+        central_panel.sash_place(3, 1600, 1)
 
+    def sort_by_ids(self):
+        """
+        The idea is the same as for <self.sort_by_tree> method, but this one uses not a special SVG created my MEGA5 and 
+        Inkscape 0.48, but a plain list of protein_ids. Any spaces will be converted to '_' signs.
+        """
+        ids_filename = tkFileDialog.askopenfilename(initialdir = self.host.settings.work_dir, filetypes = (("Plain text file", "*.*"), ))
+        if ids_filename == "": # Cancel
+            return
+        old_order_seqs = Aln_basic.read_fasta_from_strings(self.fixed.get_strings())
+        old_seqs = dict()
+        for seq in old_order_seqs:
+            if seq.ID in old_seqs:
+                print ("   WARNING: duplicate sequence ID detected: %s" % seq.ID)
+                self.host.set_status("WARNING: duplicate sequence ID detected: %s" % seq.ID)
+            old_seqs[seq.ID] = seq
+        ordered_ids = Aln_basic.read_ordered_list(ids_filename)
+        for i in range(len(ordered_ids)):
+            ordered_ids[i] = ordered_ids[i].split("|", 1)[0]
+            ordered_ids[i] = ordered_ids[i].replace(" ", "_")
+
+        if len(old_seqs.keys()) != len(ordered_ids):
+            print ("    FATAL ERROR: cannot sort sequences, %i sequences with unique IDs found and %i ids red from the input file!" % (len(old_seqs.keys()), len(ordered_ids)))
+            self.host.set_status("WARNING: sorting of sequences failed, see terminal for details", "#FF0000")
+            return
+
+        self.fixed.text_widget.delete(1.0, tkinter.END) # Clearing of the <fixed> text widget
+        self.IDs.text_widget.delete(1.0, tkinter.END) # Clearing of the <IDs> text widget
+        new_order = ""
+        new_ids = ""
+        n = 0
+        for ordered_id in ordered_ids:
+            if ordered_id in old_seqs:
+                new_order += ">%s\n" % old_seqs[ordered_id].name
+                new_order += "%s\n\n" % old_seqs[ordered_id].sequence
+                new_ids += "%s\n" % old_seqs[ordered_id].ID
+                n += 1
+        self.fixed.text_widget.insert(tkinter.END, new_order)
+        self.IDs.text_widget.insert(tkinter.END, new_ids)
+
+        print ("    Alignment was sorted according to the %s plain ids file!" % ids_filename)
+        self.host.log_tab.write_to_log("    Alignment was sorted according to the %s plain ids file!" % ids_filename, True)
+        if n == len(ordered_ids):
+            self.host.set_status("Ready")
+        else:
+            self.host.set_status("Less sequences were printed (%i) then expected (%i)" % (n, len(ordered_ids)), "#FF0000")
+           
     def sort_by_tree(self):
         tree_filename = tkFileDialog.askopenfilename(initialdir = self.host.settings.work_dir, filetypes = (("Inkscape vector file", "*.svg"), ))
         if tree_filename == "": # Cancel

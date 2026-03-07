@@ -192,7 +192,7 @@ for s in seq_list:
     #    req_name = s.ID
     output_file.write(">%s\n%s\n\n" % (req_name, s.sequence))
     id_part = req_name.split("|", 1)[0] # FIX: version 2.95 (NGPhylogeny stupid replacement tracked)
-    ngphylogeny_name = re.sub("[^A-Za-z0-9\-_]", "-", req_name)
+    ngphylogeny_name = re.sub("[^A-Za-z0-9\-_\+]", "-", req_name)
     output_ngphylogeny.write("%s\t%s\t%s\n" % (id_part, req_name, ngphylogeny_name))
     if s.name != req_name:
         o += 1
