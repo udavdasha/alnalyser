@@ -83,7 +83,8 @@ class AlnInput(tkinter.Frame):
         seq_size = len(seqs)
         bad_ids = list()
         identical_seq_ids = dict()
-        smooth = True        
+        smooth = True
+        print ("Filtering of protein sequences started!")
         while i < len(seqs):
             if not seqs[i].ID in seq_ids_unique: # This is normal sequence            
                 seq_ids_unique[seqs[i].ID] = seqs[i].sequence
@@ -93,6 +94,7 @@ class AlnInput(tkinter.Frame):
                     smooth = False
                     bad_ids.append(seqs[i].ID)                    
                 else:
+                    print("Removing: '%s' (identical by ID and sequence to remaining sequence)" % seqs[i].ID)
                     seqs.pop(i)
                     i -= 1
                     r += 1

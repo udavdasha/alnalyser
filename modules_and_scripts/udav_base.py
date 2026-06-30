@@ -1,6 +1,6 @@
 """
 Module for the very base classes used in all scripts
-------- Version: 1.7.0
+------- Version: 1.9.0
 
 Methods included in this module:
         1) dict read_feature_file (feature_file, feature_type)
@@ -103,7 +103,7 @@ def print_pure_sequences(seqs, output_filename, id_only, remove_gaps):
             sequence = sequence.replace("-", "")
         if id_only == True:
             name = s.ID
-        output_file.write(">%s\n%s\n\n" %(name, sequence))         
+        output_file.write(">%s\n%s\n\n" %(name, sequence))
     output_file.close()    
 
     if id_only == True:
@@ -124,7 +124,7 @@ def correspond_back(seqs, correspond_filename):
     
     n = 0
     for i in range(len(seqs)):
-        if seqs[i].ID in corr:           
+        if seqs[i].ID in corr:
             seqs[i].name = corr[seqs[i].ID]
             n += 1
         else:
@@ -148,15 +148,18 @@ class Sequence:
         if (self.ID == self.name) and define_proper_id:
             self.define_id()
 
-    def print_fasta (self, fasta_file, size = None):
+    def print_fasta (self, fasta_file, size = None, part_begin = None, part_end = None):
         fasta_file.write(">" + self.name + "\n")
+        sequence = self.sequence
+        if (part_begin != None) and (part_end != None):
+            sequence = self.sequence[part_begin - 1:part_end]
         if size == None:
-            fasta_file.write(self.sequence + "\n\n")
+            fasta_file.write(sequence + "\n\n")
         else:
-            start = 0            
-            while start < len(self.sequence):
+            start = 0
+            while start < len(sequence):
                 end = start + size
-                fasta_file.write(self.sequence[start:end] + "\n")
+                fasta_file.write(sequence[start:end] + "\n")
                 start += size
             fasta_file.write("\n")
 
@@ -176,7 +179,7 @@ class Sequence:
 
 class Feature:
     def __init__(self, single_feature, not_exact = False):
-        #[TMHMM] 1..5,9..11,17..25        
+        #[TMHMM] 1..5,9..11,17..25
         self.name = single_feature.split(" ")[0].strip("[]")
         if not_exact:
             self.name = self.name.split("/", 1)[0]
@@ -188,14 +191,14 @@ class Feature:
             return int(fields[0])
         else:
             print ("WARNING: feature region '%s'" % region)
-            return -1             
+            return -1
             
     def get_end(self, region):
         fields = region.split("..")
         if len(fields) == 1:
             return int(fields[0])
         else:
-            return int(fields[1])      
+            return int(fields[1])
 
     def get_length(self):
         length = 0
@@ -249,7 +252,7 @@ class Featured_sequence(Sequence):
         for i in range(len(self.sequence)):
             curr_letter = self.sequence[i]
             if curr_letter == gap_symbol:
-                for f in range(len(self.features)):                    
+                for f in range(len(self.features)):
                     for r in range(len(self.features[f].regions)):
                         curr_region = self.features[f].regions[r]
                         start = self.features[f].get_begin(curr_region)
@@ -359,7 +362,7 @@ class Alignment_sequence(Sequence):
 
             if len(fields) != 1: # This name was really long
                 desc_part = fields[1]
-                req_part = id_part + " " + desc_part            
+                req_part = id_part + " " + desc_part
                 print (req_part)
         self.name = req_part
         if self.ID == original_name: #Case when ID is identical to name
@@ -381,12 +384,18 @@ class Alignment_sequence(Sequence):
 
     def prepare_organism (self):
         new_name = self.name
-        bad_symbols = "[\[\]\'\,\=]" # FIX: version 1.3 (symbol = is added as bad)
+        bad_symbols = "[\[\]\'\,\=\(\)]" # FIX: version 1.3 (symbol '=' is added as bad), version 1.8 (symbols '(', ')' added as bad)
         if re.search(bad_symbols, self.name) != None: # Uneligble characters found
             new_name = re.sub(bad_symbols, "", self.name)
             print ("Replacing: OLD = %s" % self.name)
             print ("           NEW = %s" % new_name)
-            
+            self.name = new_name
+        replace_to_underscore = "[\+]" #FIX: version 1.9 symbol '+' added for replacement rather than remove
+        if re.search(replace_to_underscore, self.name) != None: # Uneligble characters found
+            print ("HERE!")
+            new_name = re.sub(replace_to_underscore, "_", self.name)
+            print ("Replacing: OLD = %s" % self.name)
+            print ("           NEW = %s" % new_name)
             self.name = new_name
 
 def read_feature_file(feature_filename, feature_type, color_scheme, scheme_only, not_exact = False):
@@ -448,7 +457,7 @@ def get_featured (sequence_filename, correspond_filename, feature_filename, feat
     for s in alignment:
         s.remove_limits(False)
         n += 1
-        if s.ID in sequence_features:            
+        if s.ID in sequence_features:
             curr_seq = Featured_sequence(s.name, s.sequence, sequence_features[s.ID])
             before = curr_seq.get_feature_string()
             curr_seq.correct_features("-")
@@ -458,10 +467,10 @@ def get_featured (sequence_filename, correspond_filename, feature_filename, feat
             curr_seq.range_features_length()
             #debug.write("BEFORE        : %s\n" % before)
             #debug.write("AFTER CORRECT : %s\n" % after_correct)
-            #debug.write("AFTER TM (%i) : %s\n" % (vary_value, after_correct_TM))      
+            #debug.write("AFTER TM (%i) : %s\n" % (vary_value, after_correct_TM))
         else:
             print ("WARNING: features not found for the protein '%s'!" % s.ID)
-            curr_seq = Featured_sequence(s.name, s.sequence, list())        
+            curr_seq = Featured_sequence(s.name, s.sequence, list())
         featured_alignment.append(curr_seq)
         #print ("Features obtained for %i / %i sequences" % (n, len(alignment)))
     #debug.close()
@@ -532,7 +541,7 @@ def read_unique_assignment(filename, what = "unique assignment"):
         try:
             key_to_value[fields[0]] = fields[1]      
         except IndexError:
-            print ("    [FATAL ERROR]: String '%s' does not contain tabulation marks!" % string)         
+            print ("    [FATAL ERROR]: String '%s' does not contain tabulation marks!" % string)
     assign_file.close()
     print ("    Obtained %i key-value pairs; total %i warnings obtained" % (len(key_to_value.keys()), w))
     return key_to_value

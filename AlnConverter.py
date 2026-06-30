@@ -14,6 +14,7 @@ class AlnConverter(tkinter.Frame):
         self.output_format = None
         self.output_frame = None
         self.replace_spaces = None  # Replace spaces in the organism name?
+        self.add_assembly = None    # Add data about assembly ('GCF_...') to the organism name?
         self.id_mode = None         # Specify if GI or protein_ID is used as an identifier at the end
         self.unalign = None         # If alignment should be removed
 
@@ -54,18 +55,23 @@ class AlnConverter(tkinter.Frame):
         self.replace_spaces.set(True)
         c = tkinter.Checkbutton(self.output_frame.panel, text = "Replace spaces", variable = self.replace_spaces)
         c.grid(row = 0, column = 5, sticky ="NSW", padx = self.p, pady = self.p)
+
+        self.add_assembly = tkinter.BooleanVar()
+        self.add_assembly.set(False)
+        c = tkinter.Checkbutton(self.output_frame.panel, text = "Add assembly", variable = self.add_assembly)
+        c.grid(row = 0, column = 6, sticky ="NSW", padx = self.p, pady = self.p)
         self.id_mode = tkinter.StringVar()
         self.id_mode.set("GI")
         radio = tkinter.Radiobutton(self.output_frame.panel, text = "GI", variable = self.id_mode, value = "GI")
-        radio.grid(row = 0, column = 6, sticky = "NSW", padx = self.p, pady = self.p)
-        radio = tkinter.Radiobutton(self.output_frame.panel, text = "protein_id", variable = self.id_mode, value = "ID")
         radio.grid(row = 0, column = 7, sticky = "NSW", padx = self.p, pady = self.p)
-        radio = tkinter.Radiobutton(self.output_frame.panel, text = "locus", variable = self.id_mode, value = "locus")
+        radio = tkinter.Radiobutton(self.output_frame.panel, text = "protein_id", variable = self.id_mode, value = "ID")
         radio.grid(row = 0, column = 8, sticky = "NSW", padx = self.p, pady = self.p)
+        radio = tkinter.Radiobutton(self.output_frame.panel, text = "locus", variable = self.id_mode, value = "locus")
+        radio.grid(row = 0, column = 9, sticky = "NSW", padx = self.p, pady = self.p)
         self.unalign = tkinter.BooleanVar()
         self.unalign.set(False)
         c = tkinter.Checkbutton(self.output_frame.panel, text = "Unalign", variable = self.unalign)
-        c.grid(row = 0, column = 9, sticky ="NSW", padx = self.p, pady = self.p)
+        c.grid(row = 0, column = 10, sticky ="NSW", padx = self.p, pady = self.p)
         
         central_panel.add(self.output_frame)
 
@@ -94,7 +100,7 @@ class AlnConverter(tkinter.Frame):
         if prot_type == "":
             prot_type = None
         for s in seqs: #-------------------------- 2) Output
-            curr_seq_name = s.get_name_in_format(self.id_mode.get(), self.output_format.get(), self.replace_spaces.get(), prot_type)
+            curr_seq_name = s.get_name_in_format(self.id_mode.get(), self.output_format.get(), self.replace_spaces.get(), prot_type, self.add_assembly.get())
             self.output_frame.text_widget.insert(tkinter.END, curr_seq_name)
             if self.output_format.get() != "Table":
                 if self.unalign.get() == True:                    

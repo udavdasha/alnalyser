@@ -5,7 +5,7 @@ Currently the following formats are accepted: My_Ref, My (v1.3), Uniprot (v1.4),
                                               NCBI (v.2.4), Olesya (v.2.10), COGcollator (v.2.11),
                                               German (v.2.12)
 Now exceptions are considered: FIX: version 2.12
-------- Version: 2.25
+------- Version: 2.43
 Methods included in this module:
         1) dict unredun_org (input_filename, output_filename)
            a)  Reads <input_filename> which is expected to be *.org file produces with the 
@@ -78,10 +78,48 @@ def get_id (seq, id_type):
     if id_type == "locus": # FIX: version 2.15
         result = seq.locus
     if result == None:
-        print ("FATAL ERROR: no record of type %s found in record %s" % (id_type, seq.full_fasta))
+        print ("FATAL ERROR: no record of type %s found in record %s" % (id_type, seq.name))
         sys.exit()
     return result
     
+def read_gff_format(filename, organism = "unknown organism"):
+    """
+    Method for transforming of gff-formatted file into a list of <Annotated_sequence> 
+    objects. Organism field will be filled with the <organism> parameter. Only CDS records are taken
+    """
+    proteins = list()
+    input_file = open(filename)
+    for string in input_file:
+        string = string.strip()
+        if len(string) == 0:
+            continue
+        #Ga0136566_1061691	Prodigal V2.6.3 February, 2016	     CDS	3	110        .	  -1	     0	    ID=Ga0136566_1061691.1;conf=94.46;gc_cont=0.454;locus_tag=Ga0136566_10616911;
+        #  [0]seq_id                      [1]source                [2]type  [3]start   [4]end  [5]score [6]strand [7]frame    [8]attribute
+        fields = string.split("\t")
+        if fields[2] != "CDS":
+            continue
+        source_record = fields[0]
+        gene_begin = fields[3]
+        gene_end = fields[4]
+        gene_direction = fields[6]
+        attributes = fields[8].strip(";").split(";")
+        protein_id = "Unk"
+        locus = "Unk"
+        for attribute in attributes:
+            if attribute.count("=") != 0:
+                attr_name = attribute.split("=")[0]
+                attr_value = attribute.split("=")[1]
+                #if attr_name == "ID":
+                #    protein_id = attr_value
+                if attr_name == "locus_tag":
+                    locus = attr_value
+                    protein_id = attr_value
+        curr_protein = Annotated_sequence(protein_id, protein_id, locus, "Unknown protein product", organism,
+                                          gene_begin, gene_end, gene_direction, "Unk", source_record, "", source_record)
+        proteins.append(curr_protein)
+    input_file.close()
+    return proteins
+
 class Annotated_sequence(Sequence):
     def __init__(self, gi, protein_id, locus, product, organism, gene_begin, gene_end,
                        gene_direction, taxonomy, source_record, full_fasta, source_name = None):
@@ -114,29 +152,54 @@ class Annotated_sequence(Sequence):
 
     def get_proper_protein_id(self):
         proper_id = re.search("\w+_*\d+\.\d+", self.protein_id)
-        return proper_id.group(0)
+        if proper_id == None: #FIX: For self-made protein ids this could happen
+            proper_id = self.protein_id
+        else:
+            proper_id = proper_id.group(0)
+        return proper_id 
 
-    def print_short (self, id_type, fasta_file, prot_type = None, mode = "normal"):
+    def print_URef(self, fasta_file): #FIX: version 2.30
+        """
+        In contrast to the <print_fasta()> method of the base <Sequence> class
+        this method will use the fields of a record directly to create sequence
+        name (and not self.name)
+        """
+        # >gi|Unk|ref|ABX04280.1 Haur_1637|NADH/Ubiquinone/plastoquinone (complex I)|Herpetosiphon aurantiacus DSM 785, complete genome.|Herpetosiphon aurantiacus DSM 785|1893710|1895164|-1|Bacteria; Chloroflexi; Chloroflexia; Herpetosiphonales; Herpetosiphonaceae; Herpetosiphon|CP000875 AATI01000000 AATI01000001-AATI01000172 @ GCA_000018565.1_ASM1856v1
+        id_part = "gi|%s|ref|%s" % (self.gi, self.protein_id)
+        descr_part = "|".join([self.locus, self.product, self.source_name, self.organism, 
+                              str(self.gene_begin), str(self.gene_end), str(self.gene_direction),
+                              self.taxonomy, self.source_record])
+        name_URef = ">%s %s" % (id_part, descr_part)
+        fasta_file.write(name_URef + "\n")
+        fasta_file.write(self.sequence + "\n\n")
+
+    def print_short(self, id_type, fasta_file, prot_type = None, mode = "normal"):
         req_id = get_id(self, id_type)
         if self.COG != None:
             prot_type = self.COG
+        protein_name = ""
         if prot_type == None:
             if mode == "normal":
-                fasta_file.write(">%s|%s\n" % (req_id, self.organism))
-                #fasta_file.write(">" + req_id + "\n")
+                protein_name = "%s|%s" % (req_id, self.organism)
             if mode == "underline": # FIX: version 2.8
-                fasta_file.write(">%s|%s\n" % (req_id, self.organism.replace(" ", "_")))
+                protein_name = "%s|%s" % (req_id, self.organism.replace(" ", "_"))
         else:
             if mode == "normal":
-                fasta_file.write(">%s|%s|%s\n" % (req_id, prot_type, self.organism))
+                protein_name = "%s|%s|%s" % (req_id, prot_type, self.organism)
             if mode == "cog": # FIX: version 2.6
-                fasta_file.write(">%s|%s %s\n" % (req_id, prot_type, self.organism))
-        fasta_file.write(self.sequence + "\n\n")
+                protein_name = "%s|%s %s" % (req_id, prot_type, self.organism)
+            if mode == "underline": # FIX: version 2.36
+                protein_name = "%s|%s|%s" % (req_id, prot_type, self.organism.replace(" ", "_"))
 
-    def get_name_in_format(self, id_type, format, no_spaces = False, prot_type = None):
+        fasta_file.write(">%s\n" % protein_name)
+        fasta_file.write(self.sequence + "\n\n")
+        return protein_name
+
+    def get_name_in_format(self, id_type, format, no_spaces = False, prot_type = None, add_assembly = None):
         """
         Returns sequence name in fasta format of selected flavor
-        FIX: version 2.11
+        FIX: version 2.11, 2.43
+        CAUTION: <no_spaces> and <add_assembly> options now work only for 'My' and 'Basic' output formats 
         """
         supported = {"My" : True, "Basic" : True, "NCBI" : True, "ID" : True, "Table" : True, "My & unaligned" : True, 
                      "Same but fixed" : True, "COGNAT" : True}
@@ -149,6 +212,13 @@ class Annotated_sequence(Sequence):
         org = self.organism
         if no_spaces:
             org = org.replace(" ", "_")
+        if add_assembly:
+            try:            
+                curr_assembly = self.source_record.split("@", 1)[1].strip()
+                assembly_name_only = "_".join(curr_assembly.split("_")[0:2])
+                org = org + "____" + assembly_name_only
+            except:
+                pass
 
         if (format == "My") or (format == "My & unaligned"):
             if prot_type == None:
@@ -159,19 +229,27 @@ class Annotated_sequence(Sequence):
            result = ">%s %s\n" % (req_id, org)
         if format == "NCBI": #FIX: version 2.23 (new NCBI format is now used)
            #result = ">gi|%s|ref|%s %s [%s]\n" % (self.gi, self.protein_id, self.product, self.organism)            
-           result = ">%s %s [%s]\n" % (req_id, self.product, self.organism)            
+           result = ">%s %s [%s]\n" % (req_id, self.product, self.organism)
         if format == "ID":
            result = ">%s\n" % req_id
-        if format == "Table":
-           result = "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (self.gi, self.protein_id, self.locus, self.organism, 
-                                                              self.gene_begin, self.gene_end, self.gene_direction,
-                                                              self.source_record, self.source_name)        
+        if format == "Table":           
+           result = "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (self.gi, self.protein_id, self.locus, self.organism, 
+                                                                      self.gene_begin, self.gene_end, self.gene_direction,
+                                                                      self.source_record, self.source_name, len(self.sequence),
+                                                                      "\t".join(re.split("; ", self.taxonomy)))
         if format == "Same but fixed":   
            result = ">" + re.sub("\/\d+\-\d+$", "", self.name) + "\n"
         if format == "COGNAT":
-           #>gi|AGL61713.1|ref|AGL61713.1|-1|379..625|L336_0001|1|hypothetical protein|CP005957.1
-           result = ">gi|%s|ref|%s|%s|%s..%s|%s|1|%s|%s\n" % (self.protein_id, self.protein_id, self.gene_direction, self.gene_begin,
-                                                              self.gene_end, self.locus, self.product, self.source_record.split(" ")[0])
+           if id_type == "ID":
+               #>gi|AGL61713.1|ref|AGL61713.1|-1|379..625|L336_0001|1|hypothetical protein|CP005957.1
+               result = ">gi|%s|ref|%s|%s|%s..%s|%s|1|%s|%s\n" % (self.protein_id, self.protein_id, self.gene_direction, self.gene_begin,
+                                                                  self.gene_end, self.locus, self.product, self.source_record.split(" ")[0])
+           elif id_type == "locus":
+               result = ">gi|%s|ref|%s|%s|%s..%s|%s|1|%s|%s\n" % (self.locus, self.locus, self.gene_direction, self.gene_begin,
+                                                                  self.gene_end, self.protein_id, self.product, self.source_record.split(" ")[0])
+           else:
+               print ("FATAL ERROR: Specify either 'ID' or 'locus' as the <id_type> for Annotated_sequence.get_name_in_format()!")
+               sys.exit()
         return result
 
     def get_data(self):
@@ -260,6 +338,7 @@ def read_req_list (input_filename, mode = "all", req_code = "1"):
     input_filename = os.path.abspath(input_filename)
     print ("List of entries inside the %s file will be red; mode = %s" % (input_filename, mode))
     required = dict()
+    n = 0
     input_list = open (input_filename, "r") 
     for string in input_list:
         string = string.strip()
@@ -287,11 +366,14 @@ def read_req_list (input_filename, mode = "all", req_code = "1"):
                     values.pop(0) # Removing organism data
                     COG_data = "_".join(values)
                     required[gi] = COG_data
-                if type(mode) == type(1.0): # FIX: version 2.14 (this is BLAST results)                    
+                if type(mode) == type(1.0): # FIX: version 2.14 (this is BLAST results)
                     gi = values[1]
                     e_value = float(values[10])
                     if e_value < mode:
                         required[gi] = True
+                if mode == "dot_to_underline": #FIX: version 2.31 (COG database weird stuff fixing)
+                    required[values[0]] = True
+                    required[values[0].replace(".", "_")] = True
     input_list.close()
     print ("DONE. Total %i entries names were obtained" % len(required.keys()))
     return required
@@ -365,7 +447,7 @@ def get_sequence_data (string, format):
             print ("WARNING: Unexpected file format. Check that 'OldRef' format was used!")
             print ("Number of fields: %i" % len(fields))
             print ("String = %s" % string)
-            raise FastaException                           
+            raise FastaException                   
         result_seq = Annotated_sequence(fields[1], fields[3], "Unk", fields[5], fields[7],
                               -1, -1, 0, "Unk", fields[6], string) 
 
@@ -400,13 +482,38 @@ def get_sequence_data (string, format):
         gi = fields[0]
         protein_id = fields[0]
         try:
-            org = re.search("\[[^\]]+\]$", fields[1]).group(0)
+            #org = re.search("\[[^\]]+\]$", fields[1]).group(0)
+            #org = re.search("\[(.+)\]$", fields[1]).group(0)
+            #FIX: version 2.28 (all the above methods fail to process the following trashy names!)
+            #>NP_228843_1 1-(5-phosphoribosyl)-5-[(5-phosphoribosylamino)methylideneamino] imidazole-4-carboxamide isomerase [Thermotoga maritima MSB8]
+            #>WP_015939709_1 aspartate aminotransferase family protein [[Haemophilus] parasuis]
+            org = ""
+            n_closed_brackets = 0
+            n_opened_brackets = 0
+            for i in reversed(range(len(fields[1]))): # Walking from the end of the line
+                letter = fields[1][i]
+                if (i == (len(fields[1]) - 1)) and (letter != ']'):
+                    raise NameError
+                org += letter
+                if letter == ']':
+                    n_closed_brackets += 1
+                if letter == '[':
+                    n_opened_brackets += 1
+                #print ("Description: '%s'" % fields[1])
+                #print ("Org: '%s'" % org)
+                #print ("Opened: %i, closed: %i" % (n_opened_brackets, n_closed_brackets))
+                if n_opened_brackets == n_closed_brackets:
+                    break 
+            org = org[::-1]
+            if org == fields[1]:
+                raise NameError
         except:
             print ("WARNING: organism was not found:")
             print ("String = %s" % string)
             org = "Unk"
         fields[1] = fields[1].replace(org, "")
-        org = org.strip("[]")
+        #org = org.strip("[]")
+        org = org[1:len(org)-1] # FIX: version 2.28
         product = fields[1].strip(" ")
         result_seq = Annotated_sequence(gi, protein_id, "Unk", product, org, -1, -1, 0, 
                                         "Unk", "Unk", string) 
@@ -508,17 +615,21 @@ def get_sequence_data (string, format):
         result_seq = Annotated_sequence(fields[1], fields[3], fields[6], fields[8], "Unk",
                               begin, end, fields[4], "Unk", fields[9], string) 
 
-    if format == "COGNAT_nucl": #FIX: version 2.25 (COGNAT_nucl is a format used by COGNAT desktop database for nucleotide records)
+    if format == "COGNAT_nucl": #FIX: version 2.25 (COGNAT_nucl is a format used by COGNAT desktop database for nucleotide records and pyCOGNAT)
         #>ref|AAXS01000132|candidate division TM7 genomosp. GTL1|Bacteria; Candidatus Saccharibacteria; candidate division TM7 genomosp. GTL1|Candidate division TM7 genomosp. GTL1 ctg713, whole genome shotgun sequence.
         #(self, gi, protein_id, locus, product, organism, gene_begin, gene_end, gene_direction, taxonomy, source_record, full_fasta, source_name = None)
         fields = string.split("|")
-        if len(fields) != 5:
+        if not len(fields) in [5, 7]:
             print ("WARNING: Unexpected file format. Check that 'COGNAT_nucl' format was used!")
             print ("Number of fields: %i" % len(fields))
             print ("String = %s" % string)
-            raise FastaException        
+            raise FastaException
+         
         result_seq = Annotated_sequence(fields[1], "Unk", "Unk", "Unk", fields[2],
                               -1, -1, 0, fields[3], "Unk", string, fields[4]) 
+        if len(fields) == 7: # Start coordinate and record length exists in file as last field # FIX: version 2.38
+            result_seq.gene_begin = int(fields[5])
+            result_seq.gene_direction = int(fields[6])
 
     if result_seq == None:
         print ("WARNING: sequence from this string was not obtained. Possibly unsupported file format: %s" % format)
@@ -526,10 +637,11 @@ def get_sequence_data (string, format):
 
     return result_seq
 
-def read_fasta (filename, sample_filename, occurrence_filename, protein_occur, verbose_limit, big_file, required_id, required_org, min_len, max_len, format = "URef", directions = None, duplicate_filename = None, type_of_id = "ID", attr_for_protein_occur = "organism"):
+def read_fasta(filename, sample_filename, occurrence_filename, protein_occur, verbose_limit, big_file, required_id, required_org, min_len, max_len, format = "URef", directions = None, duplicate_filename = None, type_of_id = "ID", attr_for_protein_occur = "organism", big_req_file = False, invert_req_list = False, correct_gene_begin = False):
     """
-    Reads FASTA-format bank and returns it as a list of Sequence objects. 
-    Also prints it to file. Can also reject sequences based on their length
+    Reads FASTA-format bank and returns it as a pair of objects: list of <AnnotatedSequence> objects and 
+    a dictionary of found identifiers (protein_id or locus).
+    Also prints it to file. Can also reject sequences based on their length.
 
     Attributes:
       str  filename               - name of the input bank file in FASTA format
@@ -537,29 +649,31 @@ def read_fasta (filename, sample_filename, occurrence_filename, protein_occur, v
       str  occurrence_filename    - name of file with occurence of proteins in organisms
       dict protein_occur          - hash where protein occurence should be deposited (non-empty or empty)
       int  verbose_limit          - how many sequences should be red before anouncement on the screen appears (FIX: set to 100500 to silence)
-      bool big_file               - if True, resulting gene list will be empty as this is a large file
-      dict required_id            - if not None, dictionary of protein_id requered
-      dict required_org           - of not None, dictionary of requered organism names
+      bool big_file               - if True, resulting gene list will be empty as this is a large file (except for the required proteins)
+      dict required_id            - if not None, dictionary of protein_id required
+      dict required_org           - if not None, dictionary of requered organism names
       int  min_len                - minimal protein length to be included into the sample
       int  max_len                - maximal protein length to be included into the sample
       str  format                 - format of the input file (see method 'get_sequence_data' for all supported)
       str  attr_for_protein_occur - name of protein
+      bool big_req_file           - if True, resulting gene list will be empty as this is a large file as well as <found> dictionary
+      bool invert_req_list        - if True, <required_id> and <required_org> lists are inverted
     """
     filename = os.path.abspath(filename)
     if not (verbose_limit == 100500): print ("Started reading input fasta file: %s" % filename)
     if sample_filename != None: # Sample file is to be printed
         sample_filename = os.path.abspath(sample_filename)
-        print ("Sample (which meet requirements) will be printed to the file %s" % sample_filename)
+        if not (verbose_limit == 100500): print ("Sample (which meet requirements) will be printed to the file %s" % sample_filename)
         reject_filename = sample_filename + ".reject"
-        print ("Data on rejections (if any) will be printed to the file %s" % reject_filename)
+        if not (verbose_limit == 100500): print ("Data on rejections (if any) will be printed to the file %s" % reject_filename)
         short_filename = sample_filename + ".short"
-        print ("Sample in 'My' format will be printed to the file %s" % short_filename)
+        if not (verbose_limit == 100500): print ("Sample in 'My' format will be printed to the file %s" % short_filename)
         sample_file = open(sample_filename, "w")
         short_file = open(short_filename, "w")
         reject_file = open(reject_filename, "w")
         id_file = open("%s.ids" % sample_filename, "w")
         table_data_file = open(sample_filename + ".table", "w") #FIX (version 2.9)
-        table_data_file.write("#protein_id\tgi\torganism\tlength\tsource\tlocus_tag\n") #FIX (version 2.15)
+        table_data_file.write("#protein_id\tgi\torganism\tlength\tsource\tsource_record\tlocus_tag\ttaxonomy\n") #FIX (version 2.15, 2.35, 2.41)
         reject_file.write("# Sequences would be rejected based on the length\n")
         reject_file.write("# Minimal length: %s\n" % min_len)
         reject_file.write("# Maximal length: %s\n" % max_len)
@@ -574,171 +688,200 @@ def read_fasta (filename, sample_filename, occurrence_filename, protein_occur, v
     found = dict()
     duplicate = dict()
     v = 0
-    n = 0 
-    for string in fasta_file:
-        string = string.strip()
-        if len(string) == 0:
-            continue
-        if string[0] == ">": # Description string
-            v += 1
-            n += 1
-            if v > verbose_limit:
-                if not (verbose_limit == 100500): print ("Proceeding %i sequence..." % n)
-                v = 0                
-            take_seq = True
-            curr_seq = get_sequence_data(string, format)            
-            #-------------------------------------- Requirement check ---------------------              
-            if required_id != None:
-                #FIX (version 1.1): also GI is checked
-                #FIX (version 1.6): part of standart fasta-format name (before space) is checked
-                #FIX (version 2.3): now values in <required_id> list are changed to "False" if found                 
-                #FIX (version 2.15): locus is checked
-                if (not curr_seq.protein_id in required_id) and (not curr_seq.gi in required_id) and (not curr_seq.ID in required_id) and (not curr_seq.locus in required_id):
-                    take_seq = False
-                if take_seq == True: # This protein is found in the required list by one of its IDs                   
-                    unique_attributes = ["protein_id", "gi", "locus"]
-                    for attr in unique_attributes:
-                        attr_value = getattr(curr_seq, attr)
-                        if attr_value in required_id: #FIX (version 2.15): now protein_id and locus could work together with COGs as well as gi\
-                            if type(required_id[attr_value]) != type(True): # COG data is available here
-                                curr_seq.COG = required_id[attr_value]
-                            found[attr_value] = True                            
-                    if curr_seq.ID in required_id:
-                        found[curr_seq.ID] = True
+    n = 0
+    str_num = 0
+    try: 
+        for string in fasta_file:
+            str_num += 1
+            string = string.strip()
+            if len(string) == 0:
+                continue
+            if string[0] == ">": # Description string
+                v += 1
+                n += 1
+                if v > verbose_limit:
+                    if not (verbose_limit == 100500): print ("Proceeding %i sequence..." % n)
+                    v = 0                
+                take_seq = True
+                curr_seq = get_sequence_data(string, format)
+                if correct_gene_begin:
+                    if curr_seq.gene_begin > curr_seq.gene_end: # FIX (v.2.37): e.g. >gi|YP_009054803.1|ref|YP_009054803.1|1|16890..727|JS54_p01|1|cytochrome c oxidase subunit III|NC_024698
+                        curr_seq.gene_begin = 1
+                #-------------------------------------- Requirement check ---------------------              
+                if required_id != None:
+                    #FIX (version 1.1): also GI is checked
+                    #FIX (version 1.6): part of standart fasta-format name (before space) is checked
+                    #FIX (version 2.3): now values in <required_id> list are changed to "False" if found
+                    #FIX (version 2.15): locus is checked
+                    #FIX (version 2.27): invertion of the list is available
+                    if (not curr_seq.protein_id in required_id) and (not curr_seq.gi in required_id) and (not curr_seq.ID in required_id) and (not curr_seq.locus in required_id):
+                        #All identifiers of this protein were not found
+                        if invert_req_list == False:
+                            take_seq = False
+                    else:
+                        #One of identifiers was found
+                        if invert_req_list == True:
+                            take_seq = False
+                    if (take_seq == True) and (invert_req_list == False): # This protein is found in the required list by one of its IDs
+                        unique_attributes = ["protein_id", "gi", "locus"]
+                        for attr in unique_attributes:
+                            attr_value = getattr(curr_seq, attr)
+                            if attr_value in required_id: #FIX (version 2.15): now protein_id and locus could work together with COGs as well as gi
+                                if type(required_id[attr_value]) != type(True): # COG data is available here
+                                    curr_seq.COG = required_id[attr_value]
+                                found[attr_value] = True                            
+                        if curr_seq.ID in required_id:
+                            found[curr_seq.ID] = True
 
-                    if curr_seq.protein_id != "Unk": #-------------------- DUPLICATES
-                        if curr_seq.COG == None: #FIX (version 2.15): not in the COG mode
-                            if not curr_seq.protein_id in duplicate:
-                                duplicate[curr_seq.protein_id] = list()
-                            duplicate[curr_seq.protein_id].append(curr_seq)
-            else:
-                #FIX (version 2.20): record data is added to organism name, if present (... @ XXX)
-                found_data = curr_seq.organism
-                if curr_seq.source_record.count("@") == 1:
-                    assembly_data = curr_seq.source_record.split(" @ ", 1)[1]
-                    found_data += ("@" + assembly_data)
-                found[curr_seq.ID] = found_data
-                found[curr_seq.gi] = found_data
-                found[curr_seq.protein_id] = found_data
+                        if curr_seq.protein_id != "Unk": #-------------------- DUPLICATES
+                            if curr_seq.COG == None: #FIX (version 2.15): not in the COG mode
+                                if not curr_seq.protein_id in duplicate:
+                                    duplicate[curr_seq.protein_id] = list()
+                                duplicate[curr_seq.protein_id].append(curr_seq)
+                else:
+                    #FIX (version 2.20): record data is added to organism name, if present (... @ XXX)
+                    if not big_req_file: # FIX (version 2.33): if even list of required proteins is big, this data should not be stored
+                        found_data = curr_seq.organism
+                        if curr_seq.source_record.count("@") == 1:
+                            assembly_data = curr_seq.source_record.split(" @ ", 1)[1]
+                            #found_data += ("@" + assembly_data)
+                            GCF_GCA = "_".join(assembly_data.split("_", 2)[0:2])
+                            found_data = GCF_GCA + "@" + curr_seq.organism #FIX (version 2.42): now prints <assembly_data> before the organism name, in correct format
+                            # Was: Chloroflexus_aurantiacus_J-10-fl@GCF_000018865.1_ASM1886v1
+                            # Now: GCF_000018865.1@Chloroflexus_aurantiacus_J-10-fl
+                        found[curr_seq.ID] = found_data
+                        found[curr_seq.gi] = found_data
+                        found[curr_seq.protein_id] = found_data
+                        found[curr_seq.locus] = found_data #FIX (version 2.29): locus is also added to 'found' data
           
-            if required_org != None:
-                if not curr_seq.organism in required_org:
-                    take_seq = False
-                    print (" Sequence is rejected: '%s'; org is wrong: '%s'" % (curr_seq.protein_id, curr_seq.organism))
-            #if curr_seq.source_record == "na" and format == "PDB": # This is not a protein!
-            #    take_seq = False 
-            #------------------------------------------------------------------------------  
-            if take_seq:                
-                if directions != None:
-                    #curr_interest = curr_seq.source_record
-                    curr_interest = curr_seq.organism
-                    if not curr_interest in directions:
-                        directions[curr_interest] = [curr_seq.organism, 0, 0]
-            
-                    directions[curr_interest][0] = curr_seq.organism
-                    if curr_seq.gene_direction == 1:
-                        directions[curr_interest][1] += 1
-                    else:
-                        directions[curr_interest][2] += 1
+                if required_org != None:
+                    if not curr_seq.organism in required_org:
+                        take_seq = invert_req_list
+                    else:                        
+                        take_seq = not invert_req_list
+                        #print (" Sequence is rejected: '%s'; org is wrong: '%s'" % (curr_seq.protein_id, curr_seq.organism))
+                #if curr_seq.source_record == "na" and format == "PDB": # This is not a protein!
+                #    take_seq = False 
+                #------------------------------------------------------------------------------  
+                if take_seq:                
+                    if directions != None:
+                        #curr_interest = curr_seq.source_record
+                        curr_interest = curr_seq.organism
+                        if not curr_interest in directions:
+                            directions[curr_interest] = [curr_seq.organism, 0, 0]
 
-                if len(seqs) != 0:
-                    if seqs[-1].length_in_range(min_len, max_len):                    
-                        if sample_filename != None:
-                            table_data_file.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (seqs[-1].protein_id, seqs[-1].gi, seqs[-1].organism, len(seqs[-1].sequence), seqs[-1].source_name, seqs[-1].locus))
-                            curr_mode = "normal"
-                            if seqs[-1].COG != None: # COG data is available here
-                                curr_mode = "cog"
-                            seqs[-1].print_fasta(sample_file)
-                            seqs[-1].print_short(type_of_id, short_file, None, curr_mode)
-                            id_file.write("%s\n" % get_id(seqs[-1], type_of_id)) #FIX: version 2.15 (locus, GI or ID depending on <type_of_id>)
-                        #-------------------------------------- Occurence -----------------------------
-                        curr_value = getattr(seqs[-1], attr_for_protein_occur)
-                        if curr_value in protein_occur.keys():
-                            protein_occur[curr_value] += 1
+                        directions[curr_interest][0] = curr_seq.organism
+                        if curr_seq.gene_direction == 1:
+                            directions[curr_interest][1] += 1
                         else:
-                            protein_occur[curr_value] = 1
-                        #------------------------------------------------------------------------------
-                        if big_file: # This should be operated without usage of memory
-                            if required_id != None: #FIX (version 2.19): required sequences are stored
-                                big_file_seqs.append(seqs[-1])
+                            directions[curr_interest][2] += 1
+
+                    if len(seqs) != 0:
+                        seqs[-1].sequence = "".join(seqs[-1].sequence) # FIX (version 2.40): this (compared to += string) is much faster
+                        if seqs[-1].length_in_range(min_len, max_len):                    
+                            if sample_filename != None:
+                                table_data_file.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (seqs[-1].protein_id, seqs[-1].gi, seqs[-1].organism, len(seqs[-1].sequence), seqs[-1].source_name, seqs[-1].source_record, seqs[-1].locus, "\t".join(re.split("; ", seqs[-1].taxonomy))))
+                                #curr_mode = "normal"
+                                curr_mode = "underline"
+                                if seqs[-1].COG != None: # COG data is available here
+                                    curr_mode = "cog"
+                                seqs[-1].print_fasta(sample_file)
+                                seqs[-1].print_short(type_of_id, short_file, None, curr_mode)
+                                id_file.write("%s\n" % get_id(seqs[-1], type_of_id)) #FIX: version 2.15 (locus, GI or ID depending on <type_of_id>)
+                            #-------------------------------------- Occurence -----------------------------
+                            curr_value = getattr(seqs[-1], attr_for_protein_occur)
+                            if curr_value in protein_occur.keys():
+                                protein_occur[curr_value] += 1
+                            else:
+                                protein_occur[curr_value] = 1
+                            #------------------------------------------------------------------------------
+                            if big_file or big_req_file: # This should be operated without usage of memory
+                                if (required_id != None) and (big_req_file == False): #FIX (version 2.19): required sequences are stored except explicitly stated (v. 2.26)
+                                    big_file_seqs.append(seqs[-1])
+                                seqs.pop()
+                        else:
+                            if sample_filename != None: reject_file.write("%s\t%i\t%s\n" % (seqs[-1].protein_id, len(seqs[-1].sequence), seqs[-1].product))
                             seqs.pop()
-                    else:
-                        if sample_filename != None: reject_file.write("%s\t%i\t%s\n" % (seqs[-1].protein_id, len(seqs[-1].sequence), seqs[-1].product))
-                        seqs.pop()                    
-                seqs.append(curr_seq)
+                    curr_seq.sequence = list() # FIX (version 2.40): this (compared to += string) is much faster
+                    seqs.append(curr_seq)
 
-        else: # Sequence string
-            if take_seq:                
-                seqs[-1].sequence += string                
-    if len(seqs) != 0: # Printing the last sequence into the sample
-        if seqs[-1].length_in_range(min_len, max_len):                    
-            if sample_filename != None:                
-                table_data_file.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (seqs[-1].protein_id, seqs[-1].gi, seqs[-1].organism, len(seqs[-1].sequence), seqs[-1].source_name, seqs[-1].locus))
-                curr_mode = "normal"
-                if seqs[-1].COG != None: # COG data is available here
-                    curr_mode = "cog"
-                seqs[-1].print_fasta(sample_file)
-                seqs[-1].print_short(type_of_id, short_file, None, curr_mode)
-                id_file.write("%s\n" % get_id(seqs[-1], type_of_id)) #FIX: version 2.15 (locus, GI or ID depending on <type_of_id>)
-            #-------------------------------------- Occurence -----------------------------
-            curr_value = getattr(seqs[-1], attr_for_protein_occur)
-            if curr_value in protein_occur.keys():
-                protein_occur[curr_value] += 1
+            else: # Sequence string
+                 if take_seq:                
+                    seqs[-1].sequence.append(string) # FIX (version 2.40): this (compared to += string) is much faster
+        if len(seqs) != 0: # Printing the last sequence into the sample
+            seqs[-1].sequence = "".join(seqs[-1].sequence) # FIX (version 2.40): this (compared to += string) is much faster
+            if seqs[-1].length_in_range(min_len, max_len):                    
+                if sample_filename != None:                
+                    table_data_file.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (seqs[-1].protein_id, seqs[-1].gi, seqs[-1].organism, len(seqs[-1].sequence), seqs[-1].source_name, seqs[-1].source_record, seqs[-1].locus, "\t".join(re.split("; ", seqs[-1].taxonomy))))
+                    #curr_mode = "normal"
+                    curr_mode = "underline"
+                    if seqs[-1].COG != None: # COG data is available here
+                        curr_mode = "cog"
+                    seqs[-1].print_fasta(sample_file)
+                    seqs[-1].print_short(type_of_id, short_file, None, curr_mode)
+                    id_file.write("%s\n" % get_id(seqs[-1], type_of_id)) #FIX: version 2.15 (locus, GI or ID depending on <type_of_id>)
+                #-------------------------------------- Occurence -----------------------------
+                curr_value = getattr(seqs[-1], attr_for_protein_occur)
+                if curr_value in protein_occur.keys():
+                    protein_occur[curr_value] += 1
+                else:
+                    protein_occur[curr_value] = 1
+                #------------------------------------------------------------------------------
+                if big_file or big_req_file: # This should be operated without usage of memory
+                    if (required_id != None) and (big_req_file == False): #FIX (version 2.19): required sequences are stored except explicitly stated (v. 2.26)
+                        big_file_seqs.append(seqs[-1])
+                    seqs.pop()
             else:
-                protein_occur[curr_value] = 1
-            #------------------------------------------------------------------------------
-            if big_file: # This should be operated without usage of memory
-                if required_id != None: #FIX (version 2.19): required sequences are stored
-                    big_file_seqs.append(seqs[-1])
+                if sample_filename != None: reject_file.write("%s\t%i\t%s\n" % (seqs[-1].protein_id, len(seqs[-1].sequence), seqs[-1].product))
                 seqs.pop()
-        else:
-            if sample_filename != None: reject_file.write("%s\t%i\t%s\n" % (seqs[-1].protein_id, len(seqs[-1].sequence), seqs[-1].product))
-            seqs.pop()
-    if not (verbose_limit == 100500): print ("Total records in bank found: %i" % n)
+        if not (verbose_limit == 100500): print ("Total records in bank found: %i" % n)
         
-    fasta_file.close()
-    if sample_filename != None:
-        sample_file.close() 
-        reject_file.close()
-        short_file.close()
-        table_data_file.close()
-        id_file.close()
+        fasta_file.close()
+        if sample_filename != None:
+            sample_file.close() 
+            reject_file.close()
+            short_file.close()
+            table_data_file.close()
+            id_file.close()
 
-    if occurrence_filename != None:
-        req_id_num = None
-        req_org_num = None
-        if required_id != None:
-            req_id_num = len(required_id.keys())
-        if required_org != None:
-            req_org_num = len(required_org.keys())       
-        occurrence = open (occurrence_filename, "w")
-        occurrence.write("# Occurence of proteins in %s file\n" % filename)
-        occurrence.write("# Number of proteins of interest in external list ('None' if not external): %s\n" % req_id_num)
-        occurrence.write("# Number of organism of interest in external list ('None' if not external): %s\n" % req_org_num)
-        occurrence.write("# Organism\tNumber\n")
-        for key in protein_occur:
-            occurrence.write("%s\t%i\n" % (key, protein_occur[key]))
-        occurrence.close()
+        if occurrence_filename != None:
+            req_id_num = None
+            req_org_num = None
+            if required_id != None:
+                req_id_num = len(required_id.keys())
+            if required_org != None:
+                req_org_num = len(required_org.keys())       
+            occurrence = open (occurrence_filename, "w")
+            occurrence.write("# Occurence of proteins in %s file\n" % filename)
+            occurrence.write("# Number of proteins of interest in external list ('None' if not external): %s\n" % req_id_num)
+            occurrence.write("# Number of organism of interest in external list ('None' if not external): %s\n" % req_org_num)
+            occurrence.write("# Organism\tNumber\n")
+            for key in protein_occur:
+                occurrence.write("%s\t%i\n" % (key, protein_occur[key]))
+            occurrence.close()
 
-    if (duplicate_filename != None) and (required_id != None):
-        duplicate_file = open (duplicate_filename, "w")
-        duplicate_file.write("# Duplicates of proteins in %s file\n" % filename)
-        duplicate_file.write("# Records in external id list file: %i\n" % len(required_id.keys()))
-        duplicate_file.write("# ID\tOccurence\tOrganism<i>\tRecord<i>\t...\n")  
-        for key in duplicate.keys():
-            if len(duplicate[key]) > 1:
-                duplicate_file.write("%s\t%s" % (key, len(duplicate[key])))
-                for seq in duplicate[key]:
-                    duplicate_file.write("\t%s\t%s" % (seq.organism, seq.source_record))
-                duplicate_file.write("\n")
-        duplicate_file.close()
+        if (duplicate_filename != None) and (required_id != None):
+            duplicate_file = open (duplicate_filename, "w")
+            duplicate_file.write("# Duplicates of proteins in %s file\n" % filename)
+            duplicate_file.write("# Records in external id list file: %i\n" % len(required_id.keys()))
+            duplicate_file.write("# ID\tOccurence\tOrganism<i>\tRecord<i>\t...\n")  
+            for key in duplicate.keys():
+                if len(duplicate[key]) > 1:
+                    duplicate_file.write("%s\t%s" % (key, len(duplicate[key])))
+                    for seq in duplicate[key]:
+                        duplicate_file.write("\t%s\t%s" % (seq.organism, seq.source_record))
+                    duplicate_file.write("\n")
+            duplicate_file.close()
 
-    if required_id != None: #FIX (version 2.19): required sequences are stored
-        seqs = big_file_seqs
+        if (required_id != None) and (big_file or big_req_file): #FIX (version 2.19): required sequences are stored
+           seqs = big_file_seqs
+    except UnicodeDecodeError as e:
+        print ("An error occured after the line %i of the file %s while reading FASTA-file!" % (str_num, filename))
+        raise e
 
     return (seqs, found)
 
-def get_isoform_data(bank_filename, req_proteins = None, id_type = "GI", group_log_filename = None):
+def get_isoform_data(bank_filename, req_proteins = None, id_type = "GI", group_log_filename = None, machine_group_log_filename = None):
     """
     Method reads file at <bank_filename> and creates a dictionary with protein IDs
     (as specified by the <id_type>: 'GI' for gi, 'ID' for protein_id and 'Basic' for
@@ -746,14 +889,18 @@ def get_isoform_data(bank_filename, req_proteins = None, id_type = "GI", group_l
     gi|123456789|ref|YP_0000000.1)
     Only proteins specified in the <req_proteins> dictionary will be obtained from file.
     If <group_log_filename> is given, it will be created and filled with the log information.
+    If <machine_group_log_filename> is given, it will be created and filled with the same information but
+    in the table form
     """
     isoform = dict()
     (proteins, found) = read_fasta (bank_filename, None, None, dict(), 10000, False, req_proteins, None, None, None, "URef", None, None)
 
     groups = list() # List of [int begin, int end, str source, str org, list protein_IDs, int num]
+    id_to_length = dict() # Now protein lengths will be printed to log also FIX: version 2.32
     for p in proteins:
         group_available = False
         curr_id = get_id(p, id_type)
+        id_to_length[curr_id] = len(p.sequence)
         for g in groups:
             if p.source_record == g[2]: # Source record is the same
                 intersect = min(p.gene_end, g[1]) - max(p.gene_begin, g[0]) + 1
@@ -791,8 +938,16 @@ def get_isoform_data(bank_filename, req_proteins = None, id_type = "GI", group_l
              group_log_file.write("-----------------------------------------------------\n")
              group_log_file.write("Group #%i (source record %s, organism %s):\n" % (groups[i][5], groups[i][2], groups[i][3]))
              for protein_id in groups[i][4]:
-                 group_log_file.write("%s\n" % protein_id)            
+                 group_log_file.write("%s\t%i\n" % (protein_id, id_to_length[protein_id]))
         group_log_file.close()
+
+    if machine_group_log_filename != None:
+        machine_group_log_file = open(machine_group_log_filename, "w")
+        machine_group_log_file.write("#protein_id\tgroup_num\n")
+        for i in range(len(groups)):
+             for protein_id in groups[i][4]:
+                 machine_group_log_file.write("%s\t%i\n" % (protein_id, groups[i][5]))
+        machine_group_log_file.close()
 
     print ("Defined %i groups of isoforms containing %i proteins!" % (n - 1, len(isoform.keys())))
     return isoform
