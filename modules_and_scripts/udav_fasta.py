@@ -5,7 +5,7 @@ Currently the following formats are accepted: My_Ref, My (v1.3), Uniprot (v1.4),
                                               NCBI (v.2.4), Olesya (v.2.10), COGcollator (v.2.11),
                                               German (v.2.12)
 Now exceptions are considered: FIX: version 2.12
-------- Version: 2.43
+------- Version: 2.44
 Methods included in this module:
         1) dict unredun_org (input_filename, output_filename)
            a)  Reads <input_filename> which is expected to be *.org file produces with the 
@@ -198,7 +198,7 @@ class Annotated_sequence(Sequence):
     def get_name_in_format(self, id_type, format, no_spaces = False, prot_type = None, add_assembly = None):
         """
         Returns sequence name in fasta format of selected flavor
-        FIX: version 2.11, 2.43
+        FIX: version 2.11, 2.43, 2.44
         CAUTION: <no_spaces> and <add_assembly> options now work only for 'My' and 'Basic' output formats 
         """
         supported = {"My" : True, "Basic" : True, "NCBI" : True, "ID" : True, "Table" : True, "My & unaligned" : True, 
@@ -233,10 +233,10 @@ class Annotated_sequence(Sequence):
         if format == "ID":
            result = ">%s\n" % req_id
         if format == "Table":           
-           result = "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (self.gi, self.protein_id, self.locus, self.organism, 
-                                                                      self.gene_begin, self.gene_end, self.gene_direction,
-                                                                      self.source_record, self.source_name, len(self.sequence),
-                                                                      "\t".join(re.split("; ", self.taxonomy)))
+           result = "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (self.gi, self.protein_id, self.name, self.locus, self.organism, 
+                                                                          self.gene_begin, self.gene_end, self.gene_direction,
+                                                                          self.source_record, self.source_name, len(self.sequence),
+                                                                          "\t".join(re.split("; ", self.taxonomy)))
         if format == "Same but fixed":   
            result = ">" + re.sub("\/\d+\-\d+$", "", self.name) + "\n"
         if format == "COGNAT":
@@ -673,7 +673,7 @@ def read_fasta(filename, sample_filename, occurrence_filename, protein_occur, ve
         reject_file = open(reject_filename, "w")
         id_file = open("%s.ids" % sample_filename, "w")
         table_data_file = open(sample_filename + ".table", "w") #FIX (version 2.9)
-        table_data_file.write("#protein_id\tgi\torganism\tlength\tsource\tsource_record\tlocus_tag\ttaxonomy\n") #FIX (version 2.15, 2.35, 2.41)
+        table_data_file.write("#protein_id\tgi\tfull_name\torganism\tlength\tsource\tsource_record\tlocus_tag\ttaxonomy\n") #FIX (version 2.15, 2.35, 2.41, 2.44)
         reject_file.write("# Sequences would be rejected based on the length\n")
         reject_file.write("# Minimal length: %s\n" % min_len)
         reject_file.write("# Maximal length: %s\n" % max_len)
@@ -780,7 +780,7 @@ def read_fasta(filename, sample_filename, occurrence_filename, protein_occur, ve
                         seqs[-1].sequence = "".join(seqs[-1].sequence) # FIX (version 2.40): this (compared to += string) is much faster
                         if seqs[-1].length_in_range(min_len, max_len):                    
                             if sample_filename != None:
-                                table_data_file.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (seqs[-1].protein_id, seqs[-1].gi, seqs[-1].organism, len(seqs[-1].sequence), seqs[-1].source_name, seqs[-1].source_record, seqs[-1].locus, "\t".join(re.split("; ", seqs[-1].taxonomy))))
+                                table_data_file.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (seqs[-1].protein_id, seqs[-1].gi, seqs[-1].name, seqs[-1].organism, len(seqs[-1].sequence), seqs[-1].source_name, seqs[-1].source_record, seqs[-1].locus, "\t".join(re.split("; ", seqs[-1].taxonomy))))
                                 #curr_mode = "normal"
                                 curr_mode = "underline"
                                 if seqs[-1].COG != None: # COG data is available here
